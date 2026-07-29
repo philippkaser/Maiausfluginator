@@ -82,6 +82,32 @@
   --grad-spring: linear-gradient(122deg, #7ce9c8 0%, #a9ee9b 48%, #cbf172 100%);
   --grad-dusk: linear-gradient(122deg, #ffbe86 0%, #ff8fa8 100%);
   --grad-text: linear-gradient(112deg, #ffffff 0%, #eefaf5 44%, #bdf1dc 100%);
+  /* Meters and gradient numerals need different weight per ground: the bright
+     spring gradient is legible on ink and washes out on paper. */
+  --grad-fill: var(--grad-spring);
+  --grad-score: var(--grad-spring);
+  --ring-1: #7ce9c8;
+  --ring-2: #a9ee9b;
+  --ring-3: #cbf172;
+
+  /* The flat mark, when the shader is not up (yet). */
+  --mark-hi: #d8f78c;
+  --mark-lo: #6fe6c4;
+  --mark-face: #ffffff;
+
+  /* Neutrals that have to flip with the ground: recessed rails, hover fills,
+     the pointer highlight, the modal scrim, tiles inside hairline grids. */
+  --sunk: rgba(255, 255, 255, 0.08);
+  --wash: rgba(255, 255, 255, 0.03);
+  --wash-strong: rgba(255, 255, 255, 0.06);
+  --spot: rgba(255, 255, 255, 0.07);
+  --scrim: rgba(2, 4, 7, 0.62);
+  --tile: linear-gradient(177deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
+  --tile-hover: linear-gradient(177deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+  --opaque: rgba(14, 18, 25, 0.94);
+  --selection: rgba(111, 230, 196, 0.28);
+  --grain-opacity: 0.035;
+  --grain-blend: overlay;
 
   /* --- Depth ------------------------------------------------------------- */
   --blur: blur(30px) saturate(190%);
@@ -106,6 +132,104 @@
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
   color-scheme: dark;
+}
+
+/* --------------------------------------------------------------------------
+   Light — the same room with the lights on.
+
+   Glass inverts: panes become white washes rather than white films, hairlines
+   go dark, and the shadow loses its black. The two gradients keep their hue
+   but not their brightness — mint on paper is a highlight, not a colour, so
+   anything that has to be read (numerals, meters, links) switches to the
+   deeper pair below. Set on <html data-theme="light"> before first paint.
+   -------------------------------------------------------------------------- */
+
+:root[data-theme="light"] {
+  --ink: #f4f2ef;
+  --ink-1: #efeeea;
+  --ink-2: #e7e7e2;
+  --ink-raise: #ffffff;
+
+  --glass-1: linear-gradient(
+    177deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(255, 255, 255, 0.6) 60%,
+    rgba(255, 255, 255, 0.54) 100%
+  );
+  --glass-2: linear-gradient(
+    177deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.74) 60%,
+    rgba(255, 255, 255, 0.68) 100%
+  );
+  --glass-3: linear-gradient(
+    177deg,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.92) 60%,
+    rgba(255, 255, 255, 0.88) 100%
+  );
+  --glass-sunk: rgba(255, 255, 255, 0.72);
+
+  --edge: rgba(28, 34, 40, 0.1);
+  --edge-strong: rgba(28, 34, 40, 0.16);
+  --hairline: rgba(28, 34, 40, 0.1);
+  --hairline-strong: rgba(28, 34, 40, 0.18);
+
+  /* Lit from the top like the dark rim, but it has to land on white, so the
+     far edge turns into a shadow line instead of fading out. */
+  --rim: linear-gradient(
+    152deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.5) 28%,
+    rgba(28, 34, 40, 0.07) 62%,
+    rgba(28, 34, 40, 0.12) 100%
+  );
+
+  --text: #13181c;
+  --text-2: rgba(19, 24, 28, 0.68);
+  --text-3: rgba(19, 24, 28, 0.48);
+  --text-4: rgba(19, 24, 28, 0.3);
+
+  --accent: #0f8168;
+  --accent-hi: #0a6b56;
+  --accent-ink: #04120e;
+  --accent-dim: rgba(15, 129, 104, 0.12);
+  --accent-glow: rgba(15, 129, 104, 0.28);
+
+  --red: #c0303f;
+  --red-dim: rgba(192, 48, 63, 0.1);
+
+  --grad-fill: linear-gradient(122deg, #17a184 0%, #57a92c 100%);
+  --grad-score: linear-gradient(122deg, #0f8168 0%, #4c8c1a 100%);
+  --grad-text: linear-gradient(112deg, #10161a 0%, #1b3a33 60%, #17604e 100%);
+  --ring-1: #17a184;
+  --ring-2: #35a45a;
+  --ring-3: #57a92c;
+
+  --mark-hi: #2f8f74;
+  --mark-lo: #7fd8bd;
+  --mark-face: #0f3b32;
+
+  --sunk: rgba(28, 34, 40, 0.1);
+  --wash: rgba(28, 34, 40, 0.035);
+  --wash-strong: rgba(28, 34, 40, 0.06);
+  --spot: rgba(255, 255, 255, 0.8);
+  --scrim: rgba(24, 30, 36, 0.34);
+  --tile: linear-gradient(177deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.6));
+  --tile-hover: linear-gradient(177deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.82));
+  --opaque: rgba(250, 249, 247, 0.96);
+  --selection: rgba(15, 129, 104, 0.22);
+  --grain-opacity: 0.03;
+  --grain-blend: multiply;
+
+  --blur: blur(30px) saturate(150%) brightness(1.04);
+  --blur-sm: blur(14px) saturate(140%);
+
+  --shadow-pane: 0 22px 48px -32px rgba(24, 32, 40, 0.5), 0 2px 10px -5px rgba(24, 32, 40, 0.18);
+  --shadow-lift: 0 32px 64px -30px rgba(24, 32, 40, 0.55), 0 4px 14px -6px rgba(24, 32, 40, 0.22);
+  --shadow-key: 0 10px 26px -12px rgba(15, 129, 104, 0.5);
+
+  color-scheme: light;
 }
 
 * {
@@ -179,8 +303,7 @@ a:hover {
 }
 
 ::selection {
-  background: rgba(111, 230, 196, 0.28);
-  color: #fff;
+  background: var(--selection);
 }
 
 :focus-visible {
@@ -207,7 +330,7 @@ a:hover {
   inset: 0;
   z-index: -1;
   overflow: hidden;
-  background: radial-gradient(120% 90% at 50% -10%, #0d1420 0%, var(--ink-1) 44%, var(--ink) 100%);
+  background: radial-gradient(120% 90% at 50% -10%, var(--ink-2) 0%, var(--ink-1) 44%, var(--ink) 100%);
 }
 
 .backdrop__shader {
@@ -231,6 +354,14 @@ a:hover {
   filter: blur(60px);
 }
 
+:root[data-theme="light"] .backdrop__fallback {
+  background:
+    radial-gradient(38% 32% at 22% 18%, rgba(23, 161, 132, 0.16), transparent 68%),
+    radial-gradient(42% 36% at 80% 26%, rgba(90, 140, 200, 0.14), transparent 70%),
+    radial-gradient(46% 40% at 62% 88%, rgba(210, 140, 160, 0.12), transparent 72%),
+    radial-gradient(40% 34% at 12% 78%, rgba(150, 180, 90, 0.12), transparent 70%);
+}
+
 .backdrop__vignette {
   position: absolute;
   inset: 0;
@@ -240,14 +371,20 @@ a:hover {
   pointer-events: none;
 }
 
+:root[data-theme="light"] .backdrop__vignette {
+  background:
+    radial-gradient(120% 90% at 50% 34%, transparent 34%, rgba(255, 255, 255, 0.66) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, transparent 30%, rgba(244, 242, 239, 0.72) 100%);
+}
+
 /* Grain: the one thing that keeps big soft gradients from banding on OLED. */
 .backdrop__grain {
   position: absolute;
   inset: -50%;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
-  opacity: 0.035;
+  opacity: var(--grain-opacity);
   pointer-events: none;
-  mix-blend-mode: overlay;
+  mix-blend-mode: var(--grain-blend);
 }
 
 /* --------------------------------------------------------------------------
@@ -297,7 +434,7 @@ a:hover {
   border-radius: inherit;
   background: radial-gradient(
     460px circle at var(--mx, 50%) var(--my, -20%),
-    rgba(255, 255, 255, 0.07),
+    var(--spot),
     transparent 62%
   );
   opacity: 0;
@@ -428,15 +565,38 @@ a:hover {
   text-decoration: none;
 }
 
-.brand__mark {
-  width: 26px;
-  height: 26px;
+/* The mark: a shader canvas with the flat cube behind it. The glyph is only
+   hidden once the shader is actually up, so there is never a gap. */
+.mark {
+  position: relative;
+  display: block;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 8px rgba(111, 230, 196, 0.35));
+  filter: drop-shadow(0 2px 8px var(--accent-glow));
   transition: transform 0.5s var(--ease-soft);
 }
 
-.brand:hover .brand__mark {
+.mark__shader,
+.mark__glyph {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.mark__shader canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mark__glyph {
+  transition: opacity 0.4s var(--ease);
+}
+
+.mark__glyph[data-hidden="true"] {
+  opacity: 0;
+}
+
+.brand:hover .mark {
   transform: rotate(-8deg) scale(1.06);
 }
 
@@ -453,8 +613,8 @@ a:hover {
   margin-left: auto;
   padding: 3px;
   border-radius: var(--r-pill);
-  background: var(--glass-sunk);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  background: var(--sunk);
+  box-shadow: inset 0 1px 2px var(--wash-strong);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -481,7 +641,7 @@ a:hover {
 .nav__link[aria-current="page"] {
   color: var(--text);
   background: var(--glass-3);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 2px 8px -4px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 2px 8px -4px rgba(20, 26, 32, 0.4);
 }
 
 .topbar__me {
@@ -691,6 +851,32 @@ a.tag:hover {
   font-size: 0.82rem;
 }
 
+/* A round glass button for a single glyph — the theme switch, nothing else. */
+.iconbtn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--glass-2);
+  box-shadow: inset 0 0 0 1px var(--edge), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color 0.2s var(--ease), transform 0.25s var(--ease), background 0.25s var(--ease);
+}
+
+.iconbtn:hover {
+  color: var(--text);
+  background: var(--glass-3);
+  transform: translateY(-1px);
+}
+
+.iconbtn:active {
+  transform: scale(0.94);
+}
+
 /* A toggle that is currently on — tinted, not filled: it is a filter, not the
    primary action on the screen. */
 .btn[aria-pressed="true"] {
@@ -716,8 +902,8 @@ a.tag:hover {
   padding: 3px;
   gap: 2px;
   border-radius: var(--r-pill);
-  background: var(--glass-sunk);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  background: var(--sunk);
+  box-shadow: inset 0 1px 3px var(--wash-strong), inset 0 0 0 1px var(--edge);
   max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
@@ -734,7 +920,7 @@ a.tag:hover {
   left: 0;
   border-radius: var(--r-pill);
   background: var(--glass-3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 3px 10px -4px rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 3px 10px -4px rgba(20, 26, 32, 0.45);
   transform: translateX(var(--thumb-x, 0));
   width: var(--thumb-w, 0);
   transition: transform 0.42s var(--ease), width 0.42s var(--ease), opacity 0.2s linear;
@@ -800,7 +986,7 @@ a.tag:hover {
   color: var(--text);
   font: inherit;
   font-size: 0.92rem;
-  box-shadow: inset 0 0 0 1px var(--edge), inset 0 2px 6px rgba(0, 0, 0, 0.32);
+  box-shadow: inset 0 0 0 1px var(--edge), inset 0 2px 6px var(--wash-strong);
   transition: box-shadow 0.25s var(--ease), background 0.25s var(--ease);
 }
 
@@ -812,14 +998,14 @@ a.tag:hover {
 .input:hover,
 .textarea:hover,
 .select:hover {
-  box-shadow: inset 0 0 0 1px var(--edge-strong), inset 0 2px 6px rgba(0, 0, 0, 0.32);
+  box-shadow: inset 0 0 0 1px var(--edge-strong), inset 0 2px 6px var(--wash-strong);
 }
 
 .input:focus,
 .textarea:focus,
 .select:focus {
   outline: none;
-  background: rgba(0, 0, 0, 0.34);
+  background: var(--ink-raise);
   box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-dim);
 }
 
@@ -835,6 +1021,10 @@ a.tag:hover {
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 38px;
+}
+
+:root[data-theme="light"] .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='rgba(19,24,28,.5)' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .select option {
@@ -865,19 +1055,15 @@ input[type="range"]:active {
 input[type="range"]::-webkit-slider-runnable-track {
   height: 5px;
   border-radius: var(--r-pill);
-  background:
-    linear-gradient(122deg, #7ce9c8 0%, #cbf172 100%) 0 / var(--fill, 50%) 100% no-repeat,
-    rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  background: var(--grad-fill) 0 / var(--fill, 50%) 100% no-repeat, var(--sunk);
+  box-shadow: inset 0 1px 2px var(--wash-strong);
 }
 
 input[type="range"]::-moz-range-track {
   height: 5px;
   border-radius: var(--r-pill);
-  background:
-    linear-gradient(122deg, #7ce9c8 0%, #cbf172 100%) 0 / var(--fill, 50%) 100% no-repeat,
-    rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  background: var(--grad-fill) 0 / var(--fill, 50%) 100% no-repeat, var(--sunk);
+  box-shadow: inset 0 1px 2px var(--wash-strong);
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -1039,12 +1225,12 @@ input[type="checkbox"] {
 .stat {
   position: relative;
   padding: 16px 18px;
-  background: linear-gradient(177deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
+  background: var(--tile);
   transition: background 0.3s var(--ease);
 }
 
 .stat:hover {
-  background: linear-gradient(177deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+  background: var(--tile-hover);
 }
 
 .stat__value {
@@ -1056,7 +1242,7 @@ input[type="checkbox"] {
 }
 
 .stat__value--accent {
-  background: var(--grad-spring);
+  background: var(--grad-score);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1142,21 +1328,21 @@ input[type="checkbox"] {
 .bar__track {
   height: 6px;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+  background: var(--sunk);
+  box-shadow: inset 0 1px 2px var(--wash-strong);
   overflow: hidden;
 }
 
 .bar__fill {
   height: 100%;
   border-radius: var(--r-pill);
-  background: var(--grad-spring);
+  background: var(--grad-fill);
   box-shadow: 0 0 12px -2px var(--accent-glow);
   transition: width 0.75s var(--ease);
 }
 
 .bar__fill--muted {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--text-4);
   box-shadow: none;
 }
 
@@ -1191,12 +1377,8 @@ input[type="checkbox"] {
 }
 
 .list__row:hover {
-  background: radial-gradient(
-      600px circle at var(--mx, 50%) var(--my, 50%),
-      rgba(255, 255, 255, 0.07),
-      transparent 60%
-    ),
-    rgba(255, 255, 255, 0.028);
+  background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%), var(--spot), transparent 60%),
+    var(--wash);
   text-decoration: none;
 }
 
@@ -1217,7 +1399,7 @@ input[type="checkbox"] {
 .list__row--podium .list__rank {
   font-weight: 640;
   font-size: 1rem;
-  background: var(--grad-spring);
+  background: var(--grad-score);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1279,7 +1461,7 @@ input[type="checkbox"] {
   margin-left: auto;
   margin-top: 6px;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.09);
+  background: var(--sunk);
   overflow: hidden;
 }
 
@@ -1287,7 +1469,7 @@ input[type="checkbox"] {
   display: block;
   height: 100%;
   border-radius: var(--r-pill);
-  background: var(--grad-spring);
+  background: var(--grad-fill);
   transition: width 0.75s var(--ease);
 }
 
@@ -1301,7 +1483,7 @@ input[type="checkbox"] {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--grad-spring);
+  background: var(--grad-fill);
   box-shadow: 0 0 8px var(--accent-glow);
   flex-shrink: 0;
   display: inline-block;
@@ -1376,7 +1558,7 @@ input[type="checkbox"] {
   font-variant-numeric: tabular-nums;
   min-width: 2.2ch;
   text-align: right;
-  background: var(--grad-spring);
+  background: var(--grad-score);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1422,7 +1604,7 @@ input[type="checkbox"] {
   gap: 5px;
   padding: 3px 9px;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--wash);
   box-shadow: inset 0 0 0 1px var(--hairline);
 }
 
@@ -1448,7 +1630,7 @@ input[type="checkbox"] {
   bottom: 3px;
   width: 2px;
   border-radius: 2px;
-  background: var(--grad-spring);
+  background: var(--grad-fill);
   opacity: 0.55;
 }
 
@@ -1536,7 +1718,7 @@ input[type="checkbox"] {
 .dropzone {
   padding: 20px;
   border-radius: var(--r-md);
-  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border: 1px dashed var(--edge-strong);
   text-align: center;
   transition: border-color 0.25s var(--ease), background 0.25s var(--ease);
   cursor: pointer;
@@ -1559,7 +1741,7 @@ input[type="checkbox"] {
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(2, 4, 7, 0.62);
+  background: var(--scrim);
   -webkit-backdrop-filter: blur(26px) saturate(140%);
   backdrop-filter: blur(26px) saturate(140%);
   animation: fade-in 0.24s var(--ease);
@@ -1638,7 +1820,7 @@ input[type="checkbox"] {
   position: relative;
   isolation: isolate;
   padding: 16px 18px;
-  background: linear-gradient(177deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
+  background: var(--tile);
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -1651,11 +1833,7 @@ a.award::after {
   position: absolute;
   inset: 0;
   opacity: 0;
-  background: radial-gradient(
-    300px circle at var(--mx, 50%) var(--my, 50%),
-    rgba(255, 255, 255, 0.08),
-    transparent 60%
-  );
+  background: radial-gradient(300px circle at var(--mx, 50%) var(--my, 50%), var(--spot), transparent 60%);
   transition: opacity 0.35s var(--ease);
   pointer-events: none;
   z-index: -1;
@@ -1741,7 +1919,7 @@ a.award:hover::after {
 }
 
 .table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.028);
+  background: var(--wash);
 }
 
 .table__scroll {
@@ -1764,6 +1942,13 @@ a.award:hover::after {
   padding: 36px 18px 64px;
 }
 
+.gate__corner {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+}
+
 .gate__card {
   width: min(460px, 100%);
   padding: clamp(26px, 4vw, 40px);
@@ -1779,7 +1964,7 @@ a.award:hover::after {
   padding: 18px;
   border-radius: var(--r-md);
   background: var(--glass-sunk);
-  box-shadow: inset 0 0 0 1px var(--edge), inset 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 0 1px var(--edge), inset 0 2px 8px var(--wash-strong);
 }
 
 .keycard__code {
@@ -1831,15 +2016,15 @@ a.award:hover::after {
 }
 
 .toast--error {
-  color: #ffb0b9;
+  color: var(--red);
 }
 
 .inline-error {
   padding: 11px 15px;
   border-radius: var(--r-md);
   background: var(--red-dim);
-  box-shadow: inset 0 0 0 1px rgba(255, 107, 122, 0.22);
-  color: #ffb0b9;
+  box-shadow: inset 0 0 0 1px var(--red-dim);
+  color: var(--red);
   font-size: 0.87rem;
 }
 
@@ -1946,13 +2131,13 @@ a.award:hover::after {
   .lightbox__bar,
   .stats,
   .awards {
-    background: rgba(14, 18, 25, 0.94);
+    background: var(--opaque);
   }
   .stat,
   .award {
     background: transparent;
   }
   .overlay {
-    background: rgba(2, 4, 7, 0.9);
+    background: var(--scrim);
   }
 }

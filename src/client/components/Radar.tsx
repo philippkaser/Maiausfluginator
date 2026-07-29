@@ -36,7 +36,7 @@ export function Radar({
           score,
           x: 150 + Math.cos(angle) * radius,
           y: 150 + Math.sin(angle) * radius,
-          color: score === null ? "rgba(255,255,255,0.22)" : "#7ce9c8",
+          color: score === null ? "var(--text-4)" : "var(--ring-1)",
           size: 5 + Math.min(9, trip.aggregate.ratingCount * 1.6),
         };
       }),
@@ -49,13 +49,13 @@ export function Radar({
     <svg className="radar" viewBox="0 0 300 300" role="img" aria-label="Ausflugsziele nach Richtung und Entfernung ab HQ">
       <defs>
         <radialGradient id="radar-glow" cx="50%" cy="50%">
-          <stop offset="0%" stopColor="rgba(111,230,196,0.13)" />
-          <stop offset="55%" stopColor="rgba(111,230,196,0.05)" />
-          <stop offset="100%" stopColor="rgba(111,230,196,0)" />
+          <stop offset="0%" stopColor="var(--accent-dim)" />
+          <stop offset="55%" stopColor="var(--accent-dim)" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="var(--accent-dim)" stopOpacity="0" />
         </radialGradient>
         <linearGradient id="radar-spoke" x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0%" stopColor="#7ce9c8" />
-          <stop offset="100%" stopColor="#cbf172" />
+          <stop offset="0%" stopColor="var(--ring-1)" />
+          <stop offset="100%" stopColor="var(--ring-3)" />
         </linearGradient>
       </defs>
 
@@ -68,7 +68,7 @@ export function Radar({
           cy="150"
           r={128 * ring}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke="var(--sunk)"
           strokeDasharray={ring === 1 ? undefined : "3 5"}
         />
       ))}
@@ -82,7 +82,7 @@ export function Radar({
             y={150 + Math.sin(angle) * 143 + 4}
             textAnchor="middle"
             fontSize="10"
-            fill="rgba(226,233,246,0.4)"
+            fill="var(--text-3)"
             letterSpacing="0.1em"
           >
             {label}
@@ -97,7 +97,7 @@ export function Radar({
           y={150 - 128 * ring + 11}
           textAnchor="end"
           fontSize="8.5"
-          fill="rgba(226,233,246,0.3)"
+          fill="var(--text-4)"
           fontVariant="tabular-nums"
         >
           {Math.round(maxKm * ring * ring)} km
@@ -105,9 +105,9 @@ export function Radar({
       ))}
 
       {/* HQ marker */}
-      <circle cx="150" cy="150" r="4.5" fill="#fff" />
-      <circle cx="150" cy="150" r="9" fill="none" stroke="rgba(255,255,255,0.3)" />
-      <text x="150" y="172" textAnchor="middle" fontSize="9" fill="rgba(226,233,246,0.5)">
+      <circle cx="150" cy="150" r="4.5" fill="var(--text)" />
+      <circle cx="150" cy="150" r="9" fill="none" stroke="var(--text-3)" />
+      <text x="150" y="172" textAnchor="middle" fontSize="9" fill="var(--text-3)">
         {hqLabel}
       </text>
 

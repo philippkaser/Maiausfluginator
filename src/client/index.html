@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#05070a" />
     <meta name="robots" content="noindex, nofollow" />
     <meta
@@ -13,6 +13,24 @@
     <title>Maiausfluginator</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23d8f78c'/%3E%3Cstop offset='1' stop-color='%236fe6c4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='24' height='24' rx='5' fill='%2305070a'/%3E%3Cpath d='M12 4 19.4 8.2 12 12.4 4.6 8.2z' fill='url(%23g)'/%3E%3Cpath d='M4.6 8.2 12 12.4v7.4l-7.4-4.2z' fill='%236fe6c4' fill-opacity='.35'/%3E%3Cpath d='M19.4 8.2 12 12.4v7.4l7.4-4.2z' fill='%23ffffff' fill-opacity='.22'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./styles.css" />
+    <script>
+      // Resolve the theme before the first paint, or the ground flashes.
+      (function () {
+        try {
+          var stored = localStorage.getItem("mai.theme");
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark";
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

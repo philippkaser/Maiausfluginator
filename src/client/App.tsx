@@ -1,5 +1,5 @@
 import { Backdrop } from "./components/Backdrop.tsx";
-import { Avatar, Mark, Spinner } from "./components/ui.tsx";
+import { Avatar, Mark, Spinner, ThemeToggle } from "./components/ui.tsx";
 import { Link, useRouter } from "./lib/router.tsx";
 import { useSession } from "./lib/store.tsx";
 import { Admin } from "./pages/Admin.tsx";
@@ -44,19 +44,22 @@ function Topbar() {
           ))}
         </nav>
 
-        {me && (
-          <div className="topbar__me">
-            <Avatar name={me.displayName} hue={me.hue} />
-            <button
-              type="button"
-              className="btn btn--quiet btn--sm"
-              onClick={() => void signOut()}
-              title={`Angemeldet als ${me.displayName}`}
-            >
-              Abmelden
-            </button>
-          </div>
-        )}
+        <div className="topbar__me">
+          <ThemeToggle />
+          {me && (
+            <>
+              <Avatar name={me.displayName} hue={me.hue} />
+              <button
+                type="button"
+                className="btn btn--quiet btn--sm"
+                onClick={() => void signOut()}
+                title={`Angemeldet als ${me.displayName}`}
+              >
+                Abmelden
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

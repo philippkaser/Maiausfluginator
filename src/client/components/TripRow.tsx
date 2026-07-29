@@ -62,7 +62,7 @@ export function TripRow({ trip, rank, weights }: { trip: Trip; rank: number; wei
             className="list__meterfill"
             style={{
               width: `${score ?? 0}%`,
-              ...(score === null ? { background: "rgba(255,255,255,0.2)" } : null),
+              ...(score === null ? { background: "var(--text-4)" } : null),
             }}
           />
         </span>

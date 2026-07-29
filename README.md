@@ -140,8 +140,8 @@ bun run typecheck
 
 ## Aussehen
 
-Glas über einer Aurora. Alles auf dem Bildschirm ist eines von drei Dingen: der lebende
-Farbverlauf im Grund, eine Glasscheibe darauf, oder Typografie. Tiefe entsteht wie bei echtem
+Glas über einem lebenden Farbverlauf. Alles auf dem Bildschirm ist eines von drei Dingen:
+der Grund, eine Glasscheibe darauf, oder Typografie. Tiefe entsteht wie bei echtem
 Glas — eine helle Kante dort, wo das Licht auftrifft, ein dunkler Schlagschatten darunter,
 und eine Unschärfe, die die Farbe von hinten aufnimmt.
 
@@ -157,14 +157,35 @@ gemessen, damit die Beschriftungen beliebig lang sein dürfen. Zeigt die Maus au
 Scheibe, wandert ein weiches Glanzlicht mit; die Position landet als `--mx`/`--my` am
 Element, gerendert wird in CSS.
 
-Der Hintergrund ist ein Fragment-Shader: zwei Runden Domain-Warping über fbm-Value-Noise,
-eingefärbt, indem vier Palettenstopps entlang des Warp-Feldes gemischt werden. Genau das
-unterscheidet ihn von den üblichen zwei weichgezeichneten Farbklecksen — die Grenzen zwischen
-den Farben werden ineinander gefaltet statt überblendet, das Feld bekommt Filamente und
-Wirbel. Fast alles bleibt Tinte und Mitternachtsblau; das Grün taucht nur dort auf, wo die
-Faltung am schärfsten ist.
+### Hell und dunkel
 
-Er ist bewusst billig: Das Feld hat keine Details oberhalb weniger Zyklen pro Bildschirm,
-also rendert er bei 55 % Auflösung mit 30 fps und wird vom Compositor gratis hochskaliert.
-Im Hintergrund-Tab pausiert er, bei `prefers-reduced-motion` steht ein einzelnes Standbild,
-und wo es gar kein WebGL gibt, springt ein statischer CSS-Verlauf ein.
+Beide Modi sind vollwertig, das System entscheidet per Default. Die Wahl liegt im Schalter
+oben rechts und in `localStorage`; ein winziges Skript in `index.html` setzt `data-theme`
+noch vor dem ersten Paint, damit der Grund nicht aufblitzt. Im Hellen dreht sich das Glas um:
+Scheiben werden weiße Aufhellungen statt weißer Filme, Haarlinien werden dunkel, der Schatten
+verliert sein Schwarz. Die Farbverläufe behalten ihren Farbton, aber nicht ihre Helligkeit —
+Mint auf Papier ist ein Glanzlicht, keine Farbe, also schalten Zahlen, Meter und Links auf das
+tiefere Paar (`--grad-fill`, `--grad-score`, `--ring-*`).
+
+### Shader
+
+Grund und Logo kommen von [Paper Shaders](https://shaders.com) (`@paper-design/shaders`,
+Apache-2.0). `src/client/lib/shader.ts` ist die Naht dazwischen: die Bibliothek liefert die
+Fragment-Shader und einen Mount, der Canvas, Resize- und Intersection-Observer, Pixel-Ratio
+und Uhr besitzt — die Sizing-Uniforms kommen aus ihrem React-Wrapper, den wir nicht benutzen,
+also füllt sie unser Helfer.
+
+**Der Grund** ist ein Mesh-Gradient in einer *Undertone*-Palette. Der Name ist das Prinzip:
+alle sechs Stopps liegen ein paar Prozent auseinander, über den Bildschirm wandert also der
+Farbton, nicht die Helligkeit. Dunkel sind es sechs Fast-Schwarz, kühl und leicht grünlich,
+hell sechs Fast-Weiß über warmem Papier. Nichts davon konkurriert mit Typo oder Glas davor.
+
+**Das Logo** ist derselbe Würfel, gegossen in flüssiges Metall (*Mercury*). Der Shader will
+eine Silhouette und kein Artwork: er baut daraus ein Kantenabstandsfeld und schickt ein
+animiertes Streifenmuster hindurch, das sich an der Kontur verbiegt. Die Quelle sind deshalb
+drei massive Flächen, jede eine Haarbreite eingerückt, damit die Fugen als Lücken überleben
+und die Form ein Würfel bleibt und kein Sechseck.
+
+Beides pausiert außerhalb des Viewports und im Hintergrund-Tab, steht bei
+`prefers-reduced-motion` auf einem einzelnen Standbild und fällt ohne WebGL2 auf statisches
+CSS beziehungsweise das flache SVG-Logo zurück.

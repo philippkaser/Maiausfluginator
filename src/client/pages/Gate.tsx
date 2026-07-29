@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { api, ApiError } from "../lib/api.ts";
 import { useSession, useToast } from "../lib/store.tsx";
-import { Field, Mark, Segmented, useSpotlight } from "../components/ui.tsx";
+import { Field, Mark, Segmented, ThemeToggle, useSpotlight } from "../components/ui.tsx";
 
 type Mode = "login" | "redeem";
 
@@ -46,9 +46,12 @@ export function Gate() {
   if (freshKey) {
     return (
       <div className="gate">
+        <div className="gate__corner">
+          <ThemeToggle />
+        </div>
         <div className="card gate__card fade-in" {...spotlight}>
           <div className="gate__mark">
-            <Mark size={34} />
+            <Mark size={56} />
           </div>
           <h1 className="display" style={{ fontSize: "1.9rem" }}>
             Dein Schlüssel
@@ -91,9 +94,12 @@ export function Gate() {
 
   return (
     <div className="gate">
+      <div className="gate__corner">
+        <ThemeToggle />
+      </div>
       <div className="card gate__card fade-in" {...spotlight}>
         <div className="gate__mark">
-          <Mark size={34} />
+          <Mark size={56} />
         </div>
 
         <h1 className="display" style={{ fontSize: "1.9rem" }}>

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { initials } from "../lib/format.ts";
+import { useTheme } from "../lib/theme.tsx";
 import { de1 } from "../../shared/num.ts";
 
 /* ------------------------------------------------------------------ */
@@ -57,47 +58,47 @@ export function Chevron({ size = 10 }: { size?: number }) {
   );
 }
 
-/**
- * The mark: an isometric cube whose three faces catch the light differently —
- * the top lit by the spring gradient, the sides falling away into the ground.
- */
-export function Mark({ size = 26 }: { size?: number }) {
-  const id = useId();
-  return (
-    <svg
-      className="brand__mark"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      style={{ width: size, height: size }}
-    >
-      <defs>
-        <linearGradient id={`${id}-top`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#d8f78c" />
-          <stop offset="100%" stopColor="#6fe6c4" />
-        </linearGradient>
-        <linearGradient id={`${id}-left`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#6fe6c4" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="#6fe6c4" stopOpacity="0.12" />
-        </linearGradient>
-        <linearGradient id={`${id}-right`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.34" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.06" />
-        </linearGradient>
-      </defs>
+/** The mark lives in its own file — it carries a shader. */
+export { Mark } from "./Mark.tsx";
 
-      <path d="M12 2.4 21.2 7.6 12 12.8 2.8 7.6z" fill={`url(#${id}-top)`} />
-      <path d="M2.8 7.6 12 12.8v8.8L2.8 16.4z" fill={`url(#${id}-left)`} />
-      <path d="M21.2 7.6 12 12.8v8.8l9.2-5.2z" fill={`url(#${id}-right)`} />
-      <path
-        d="M12 2.4 21.2 7.6v8.8L12 21.6l-9.2-5.2V7.6z"
-        stroke="rgba(255,255,255,0.34)"
-        strokeWidth="0.8"
-        strokeLinejoin="round"
-      />
-    </svg>
+/**
+ * Light or dark. The system decides until someone says otherwise, and this is
+ * where they say otherwise: one button, flipping to whatever it is not.
+ */
+export function ThemeToggle() {
+  const { theme, choice, setChoice } = useTheme();
+  const next = theme === "dark" ? "light" : "dark";
+
+  return (
+    <button
+      type="button"
+      className="iconbtn"
+      onClick={() => setChoice(next)}
+      aria-label={next === "light" ? "Helles Design" : "Dunkles Design"}
+      title={
+        choice === "system"
+          ? `Systemeinstellung (${theme === "dark" ? "dunkel" : "hell"}) — umschalten`
+          : next === "light"
+            ? "Auf hell umschalten"
+            : "Auf dunkel umschalten"
+      }
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        {theme === "dark" ? (
+          <path
+            d="M13.4 9.6A5.6 5.6 0 0 1 6.4 2.6 5.7 5.7 0 1 0 13.4 9.6z"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+          />
+        ) : (
+          <g stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+            <circle cx="8" cy="8" r="3.1" />
+            <path d="M8 1.4v1.4M8 13.2v1.4M14.6 8h-1.4M2.8 8H1.4M12.7 3.3l-1 1M4.3 11.7l-1 1M12.7 12.7l-1-1M4.3 4.3l-1-1" />
+          </g>
+        )}
+      </svg>
+    </button>
   );
 }
 
@@ -132,7 +133,7 @@ export function Avatar({
  * carry the spring gradient; unrated ones stay grey.
  */
 export function toneColor(score: number | null): string {
-  return score === null ? "rgba(255,255,255,0.2)" : "var(--accent)";
+  return score === null ? "var(--text-4)" : "var(--accent)";
 }
 
 /**
@@ -169,9 +170,9 @@ export function ScoreRing({
           {/* Rotated with the ring, so the gradient runs along the arc rather
               than across the box. */}
           <linearGradient id={`${id}-arc`} x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0%" stopColor="#7ce9c8" />
-            <stop offset="55%" stopColor="#a9ee9b" />
-            <stop offset="100%" stopColor="#cbf172" />
+            <stop offset="0%" stopColor="var(--ring-1)" />
+            <stop offset="55%" stopColor="var(--ring-2)" />
+            <stop offset="100%" stopColor="var(--ring-3)" />
           </linearGradient>
         </defs>
         <circle
@@ -179,7 +180,7 @@ export function ScoreRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke="var(--sunk)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${circumference * sweep} ${circumference}`}
@@ -190,7 +191,7 @@ export function ScoreRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={score === null ? "rgba(255,255,255,0.16)" : `url(#${id}-arc)`}
+          stroke={score === null ? "var(--text-4)" : `url(#${id}-arc)`}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${circumference * sweep * pct} ${circumference}`}
