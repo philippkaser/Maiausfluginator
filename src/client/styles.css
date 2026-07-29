@@ -179,15 +179,14 @@ a:hover {
   }
 }
 
+/* Edge to edge — the field is the whole ground, not a band across the middle. */
 .backdrop__voxels {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.3;
+  opacity: 0.34;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 4%, #000 42%, #000 86%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 4%, #000 42%, #000 86%, transparent 100%);
 }
 
 /* Grain keeps the large soft areas from banding. */

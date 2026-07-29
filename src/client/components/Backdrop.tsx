@@ -6,6 +6,11 @@ import { useEffect, useRef } from "react";
  * An isometric grid of columns whose heights come from a few summed sine waves,
  * snapped to discrete levels. Deliberately near-monochrome: it is a texture in
  * the room, not the subject of the page.
+ *
+ * The field is unbounded — rather than laying out a fixed block of cubes and
+ * hoping it is large enough, the projection is inverted to find exactly which
+ * grid cells fall inside the viewport. That fills any aspect ratio edge to edge
+ * and draws nothing that would land off-screen.
  */
 function drawVoxels(canvas: HTMLCanvasElement, time: number) {
   const ctx = canvas.getContext("2d");
@@ -14,6 +19,7 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
+  if (width === 0 || height === 0) return;
 
   if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
     canvas.width = Math.round(width * dpr);
@@ -23,17 +29,29 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
 
-  const tile = Math.max(22, Math.min(42, width / 34));
+  // Tile size scales with the viewport. Drawing is geometry-bound rather than
+  // fill-bound, so cube count is the only lever that matters for frame cost —
+  // hence chunky tiles and a hard budget as a backstop on very large windows.
+  const CUBE_BUDGET = 5200;
+  const preferred = Math.sqrt(width * height) / 20;
+  const budgetFloor = Math.sqrt((4 * width * height * 1.2) / CUBE_BUDGET);
+  const tile = Math.min(140, Math.max(40, preferred, budgetFloor));
+
   const tileW = tile;
   const tileH = tile * 0.5;
   const cubeH = tile * 0.52;
-
-  // Enough cubes to cover the viewport diagonally, capped so phones stay smooth.
-  const cols = Math.min(44, Math.ceil(width / tileW) + 8);
-  const rows = Math.min(44, Math.ceil(height / tileH) + 6);
+  const maxLift = cubeH * 3.2;
 
   const originX = width / 2;
-  const originY = height * 0.62 - ((cols + rows) * tileH) / 4;
+  const originY = height / 2;
+
+  // Screen position is x = originX + u·tileW/2, y = originY + v·tileH/2 - lift,
+  // where u = i - j and v = i + j. Inverting that gives the visible band of u/v.
+  const uMin = Math.floor((2 * -originX) / tileW) - 2;
+  const uMax = Math.ceil((2 * (width - originX)) / tileW) + 2;
+  const vMin = Math.floor((2 * -originY) / tileH) - 2;
+  // Columns further back can still be lifted into view, so reach past the bottom.
+  const vMax = Math.ceil((2 * (height + maxLift - originY)) / tileH) + 2;
 
   // Cool grey with a faint blue lift towards the peaks.
   const ramp: [number, number, number][] = [
@@ -57,9 +75,15 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
     ];
   };
 
-  for (let sum = 0; sum <= cols + rows; sum++) {
-    for (let i = Math.max(0, sum - rows); i <= Math.min(cols, sum); i++) {
-      const j = sum - i;
+  // Back to front: rising v moves towards the viewer, so later draws overlap.
+  for (let v = vMin; v <= vMax; v++) {
+    // u = 2i - v, so u and v always share parity.
+    let u = uMin;
+    if (Math.abs((u - v) % 2) === 1) u++;
+
+    for (; u <= uMax; u += 2) {
+      const i = (u + v) / 2;
+      const j = (v - u) / 2;
 
       const wave =
         Math.sin(i * 0.34 + time * 0.42) +
@@ -74,19 +98,17 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
       // as a terrain of columns rather than blocks floating in the dark.
       const columnH = cubeH + lift;
 
-      const x = originX + (i - j) * (tileW / 2);
-      const y = originY + (i + j) * (tileH / 2) - lift;
+      const x = originX + u * (tileW / 2);
+      const y = originY + v * (tileH / 2) - lift;
 
-      if (x < -tileW * 2 || x > width + tileW * 2 || y < -tileH * 6 || y > height + tileH * 4) {
-        continue;
-      }
+      if (y + tileH + columnH < 0 || y > height) continue;
 
       const [r, g, b] = sample(level);
-      // Taller cubes catch more light; the field fades towards the horizon.
-      const depth = 1 - Math.min(1, sum / (cols + rows));
-      const alpha = (0.045 + level * 0.16) * (0.28 + depth * 0.72);
+      // Aerial perspective: the far edge of the field sits back in the haze.
+      const depth = Math.min(1, Math.max(0, y / height));
+      const alpha = (0.045 + level * 0.16) * (0.34 + depth * 0.66);
 
-      // Top face - the lit one.
+      // Top face — the lit one.
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x + tileW / 2, y + tileH / 2);
@@ -100,7 +122,7 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
       ctx.lineWidth = 0.6;
       ctx.stroke();
 
-      // Left face - in shadow.
+      // Left face — in shadow.
       ctx.beginPath();
       ctx.moveTo(x - tileW / 2, y + tileH / 2);
       ctx.lineTo(x, y + tileH);
@@ -110,7 +132,7 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
       ctx.fillStyle = `rgba(${(r * 0.34) | 0}, ${(g * 0.36) | 0}, ${(b * 0.44) | 0}, ${alpha * 0.95})`;
       ctx.fill();
 
-      // Right face - half lit.
+      // Right face — half lit.
       ctx.beginPath();
       ctx.moveTo(x + tileW / 2, y + tileH / 2);
       ctx.lineTo(x, y + tileH);
@@ -131,9 +153,6 @@ function VoxelField() {
     if (!canvas) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let frame = 0;
-    let last = 0;
-    let start = performance.now();
 
     if (reduced) {
       drawVoxels(canvas, 0);
@@ -141,6 +160,10 @@ function VoxelField() {
       window.addEventListener("resize", onResize);
       return () => window.removeEventListener("resize", onResize);
     }
+
+    let frame = 0;
+    let last = 0;
+    const start = performance.now();
 
     const loop = (now: number) => {
       frame = requestAnimationFrame(loop);

@@ -45,8 +45,19 @@ ein Ausflug verliert also nichts, nur weil niemand die Wartezeit notiert hat.
 
 ```bash
 bun install
-bun run dev        # http://localhost:3000, mit Hot Reload
+bun run dev        # http://localhost, mit Hot Reload
 ```
+
+Der Server hört standardmäßig auf **Port 80**, damit die Adresse im Haus einfach
+`http://maiausfluginator` lautet — ohne Doppelpunkt und Zahl dahinter. Ports unter 1024 sind
+unter Linux und macOS privilegiert, der Prozess braucht also entweder root, einmalig
+
+```bash
+sudo setcap 'cap_net_bind_service=+ep' "$(which bun)"
+```
+
+oder schlicht einen anderen Port: `PORT=3000 bun run dev`. Fehlen die Rechte, sagt der Server
+das beim Start mit genau diesen drei Möglichkeiten statt mit einem nackten `EACCES`.
 
 Beim allerersten Start gibt es noch keine Mitglieder. Der Server legt dann automatisch einen
 **Admin-Einladungscode** an und schreibt ihn in die Konsole:
@@ -89,7 +100,7 @@ Alles optional:
 
 | Variable | Default | Bedeutung |
 | --- | --- | --- |
-| `PORT` | `3000` | Port |
+| `PORT` | `80` | Port (unter 1024 = privilegiert, siehe oben) |
 | `HOST` | `0.0.0.0` | Interface |
 | `DATA_DIR` | `./data` | Datenbank und Uploads |
 | `DB_PATH` | `$DATA_DIR/mai.sqlite` | Pfad der SQLite-Datei |
@@ -135,8 +146,15 @@ gruppierte Liste mit Trennlinien, keine Sammlung schwebender Kacheln; Sortierung
 laufen über Segmented Controls. Alle Tokens stehen oben in `styles.css` — wer die Akzentfarbe
 ändern will, ändert eine Zeile.
 
-Der Hintergrund ist ein isometrisches Voxel-Feld auf einem Canvas: die Höhen kommen aus ein paar
-überlagerten Sinuswellen und werden auf acht Stufen gerundet, damit es nach Würfeln aussieht und
-nicht nach Düne. Fast monochrom und bei 30 % Deckkraft — es ist Textur im Raum, nicht das Thema
-der Seite. Läuft mit 30 fps, pausiert im Hintergrund-Tab und steht still, wenn das System
-`prefers-reduced-motion` meldet.
+Der Hintergrund ist ein isometrisches Voxel-Feld auf einem Canvas, formatfüllend über den
+ganzen Viewport: die Höhen kommen aus ein paar überlagerten Sinuswellen und werden auf acht
+Stufen gerundet, damit es nach Würfeln aussieht und nicht nach Düne. Fast monochrom und bei
+34 % Deckkraft — es ist Textur im Raum, nicht das Thema der Seite.
+
+Das Feld ist unbegrenzt: statt einen festen Block Würfel zu legen und zu hoffen, dass er reicht,
+wird die isometrische Projektion invertiert, um genau die Gitterzellen zu bestimmen, die im
+Viewport landen. Das füllt jedes Seitenverhältnis von Kante zu Kante und zeichnet nichts, was
+danebenliegt. Die Kachelgröße skaliert mit dem Viewport und hat ein hartes Würfelbudget als
+Bremse — gemessen ist das Zeichnen geometrie- und nicht füllratenlimitiert, die Anzahl der
+Würfel ist also der einzige Hebel, der zählt. Läuft mit 30 fps, pausiert im Hintergrund-Tab und
+steht still, wenn das System `prefers-reduced-motion` meldet.
