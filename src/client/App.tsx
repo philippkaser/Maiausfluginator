@@ -1,0 +1,125 @@
+import { Backdrop } from "./components/Backdrop.tsx";
+import { Avatar, Spinner } from "./components/ui.tsx";
+import { Link, useRouter } from "./lib/router.tsx";
+import { useSession } from "./lib/store.tsx";
+import { Admin } from "./pages/Admin.tsx";
+import { Gate } from "./pages/Gate.tsx";
+import { Members } from "./pages/Members.tsx";
+import { NewTrip } from "./pages/NewTrip.tsx";
+import { Ranking } from "./pages/Ranking.tsx";
+import { TripPage } from "./pages/TripPage.tsx";
+
+const NAV = [
+  { to: "/", label: "Rangliste" },
+  { to: "/neu", label: "Eintragen" },
+  { to: "/mitglieder", label: "Mitglieder" },
+];
+
+function Topbar() {
+  const { me, signOut } = useSession();
+  const { path } = useRouter();
+
+  const links = me?.isAdmin ? [...NAV, { to: "/verwaltung", label: "Verwaltung" }] : NAV;
+
+  return (
+    <header className="topbar">
+      <div className="topbar__inner">
+        <Link to="/" className="brand">
+          <span className="brand__mark" />
+          <span className="brand__text">
+            <span className="brand__title">Maiausfluginator</span>
+            <span className="brand__sub">Durst Brixen</span>
+          </span>
+        </Link>
+
+        <nav className="nav">
+          {links.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className="nav__link"
+              aria-current={
+                link.to === "/" ? (path === "/" ? "page" : undefined) : path.startsWith(link.to) ? "page" : undefined
+              }
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        {me && (
+          <div className="topbar__me">
+            <Avatar name={me.displayName} hue={me.hue} />
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={() => void signOut()}
+              title={`Angemeldet als ${me.displayName}`}
+            >
+              Abmelden
+            </button>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function Routes() {
+  const { path } = useRouter();
+  const { me } = useSession();
+
+  const tripMatch = /^\/ausflug\/([^/]+)$/.exec(path);
+  if (tripMatch) return <TripPage tripId={tripMatch[1]!} />;
+
+  switch (path) {
+    case "/":
+      return <Ranking />;
+    case "/neu":
+      return <NewTrip />;
+    case "/mitglieder":
+      return <Members />;
+    case "/verwaltung":
+      return me?.isAdmin ? (
+        <Admin />
+      ) : (
+        <div className="glass glass--pad">
+          <h2>Nur für Admins</h2>
+          <p className="muted">Diese Seite ist der Verwaltung vorbehalten.</p>
+        </div>
+      );
+    default:
+      return (
+        <div className="glass glass--pad">
+          <h2>Seite nicht gefunden</h2>
+          <p className="muted">
+            Den Weg gibt es nicht. <Link to="/">Zurück zur Rangliste</Link>.
+          </p>
+        </div>
+      );
+  }
+}
+
+export function App() {
+  const { me, loading } = useSession();
+
+  return (
+    <>
+      <Backdrop />
+      {loading ? (
+        <div className="center-screen">
+          <Spinner label="Einen Moment…" />
+        </div>
+      ) : !me ? (
+        <Gate />
+      ) : (
+        <>
+          <Topbar />
+          <main className="shell">
+            <Routes />
+          </main>
+        </>
+      )}
+    </>
+  );
+}
