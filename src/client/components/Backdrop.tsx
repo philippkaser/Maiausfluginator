@@ -3,10 +3,9 @@ import { useEffect, useRef } from "react";
 /**
  * The voxel field.
  *
- * An isometric grid of cubes whose heights come from a few summed sine waves -
- * cheap, seamless, and smooth enough to look like a slow swell. Each cube is
- * shaded from a gradient ramp so the whole field reads as one soft aurora
- * rather than 700 individual blocks.
+ * An isometric grid of columns whose heights come from a few summed sine waves,
+ * snapped to discrete levels. Deliberately near-monochrome: it is a texture in
+ * the room, not the subject of the page.
  */
 function drawVoxels(canvas: HTMLCanvasElement, time: number) {
   const ctx = canvas.getContext("2d");
@@ -36,12 +35,12 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
   const originX = width / 2;
   const originY = height * 0.62 - ((cols + rows) * tileH) / 4;
 
-  // Aurora ramp: mint -> sky -> violet -> rose.
+  // Cool grey with a faint blue lift towards the peaks.
   const ramp: [number, number, number][] = [
-    [124, 245, 213],
-    [122, 162, 255],
-    [199, 146, 255],
-    [255, 158, 196],
+    [116, 124, 142],
+    [140, 152, 176],
+    [170, 186, 214],
+    [198, 214, 240],
   ];
 
   const sample = (t: number): [number, number, number] => {
@@ -85,7 +84,7 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
       const [r, g, b] = sample(level);
       // Taller cubes catch more light; the field fades towards the horizon.
       const depth = 1 - Math.min(1, sum / (cols + rows));
-      const alpha = (0.07 + level * 0.3) * (0.3 + depth * 0.7);
+      const alpha = (0.045 + level * 0.16) * (0.28 + depth * 0.72);
 
       // Top face - the lit one.
       ctx.beginPath();
@@ -97,7 +96,7 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
       ctx.fillStyle = `rgba(${r | 0}, ${g | 0}, ${b | 0}, ${alpha})`;
       ctx.fill();
       // A hairline along the top edges separates neighbouring cubes.
-      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.28})`;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.35})`;
       ctx.lineWidth = 0.6;
       ctx.stroke();
 
@@ -108,7 +107,7 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
       ctx.lineTo(x, y + tileH + columnH);
       ctx.lineTo(x - tileW / 2, y + tileH / 2 + columnH);
       ctx.closePath();
-      ctx.fillStyle = `rgba(${(r * 0.3) | 0}, ${(g * 0.32) | 0}, ${(b * 0.45) | 0}, ${alpha * 0.95})`;
+      ctx.fillStyle = `rgba(${(r * 0.34) | 0}, ${(g * 0.36) | 0}, ${(b * 0.44) | 0}, ${alpha * 0.95})`;
       ctx.fill();
 
       // Right face - half lit.
@@ -118,7 +117,7 @@ function drawVoxels(canvas: HTMLCanvasElement, time: number) {
       ctx.lineTo(x, y + tileH + columnH);
       ctx.lineTo(x + tileW / 2, y + tileH / 2 + columnH);
       ctx.closePath();
-      ctx.fillStyle = `rgba(${(r * 0.62) | 0}, ${(g * 0.64) | 0}, ${(b * 0.75) | 0}, ${alpha * 0.8})`;
+      ctx.fillStyle = `rgba(${(r * 0.6) | 0}, ${(g * 0.63) | 0}, ${(b * 0.72) | 0}, ${alpha * 0.82})`;
       ctx.fill();
     }
   }
@@ -162,10 +161,8 @@ function VoxelField() {
 export function Backdrop() {
   return (
     <div className="backdrop" aria-hidden="true">
-      <div className="backdrop__blob backdrop__blob--a" />
-      <div className="backdrop__blob backdrop__blob--b" />
-      <div className="backdrop__blob backdrop__blob--c" />
-      <div className="backdrop__blob backdrop__blob--d" />
+      <div className="backdrop__wash backdrop__wash--a" />
+      <div className="backdrop__wash backdrop__wash--b" />
       <VoxelField />
       <div className="backdrop__grain" />
     </div>

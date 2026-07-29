@@ -129,7 +129,14 @@ bun run typecheck
 
 ## Aussehen
 
-Dunkel, Frostglas, Aurora-Verläufe. Der Hintergrund ist ein isometrisches Voxel-Feld auf einem
-Canvas: die Höhen kommen aus ein paar überlagerten Sinuswellen und werden auf acht Stufen
-gerundet, damit es nach Würfeln aussieht und nicht nach Düne. Läuft mit 30 fps, pausiert im
-Hintergrund-Tab und steht still, wenn das System `prefers-reduced-motion` meldet.
+Dunkel, zurückhaltend, typografisch. Es gibt **eine** Akzentfarbe (`--accent`), Trennung passiert
+über Haarlinien, Tiefe über Unschärfe und Kontrast statt über Leuchten. Die Rangliste ist eine
+gruppierte Liste mit Trennlinien, keine Sammlung schwebender Kacheln; Sortierung und Presets
+laufen über Segmented Controls. Alle Tokens stehen oben in `styles.css` — wer die Akzentfarbe
+ändern will, ändert eine Zeile.
+
+Der Hintergrund ist ein isometrisches Voxel-Feld auf einem Canvas: die Höhen kommen aus ein paar
+überlagerten Sinuswellen und werden auf acht Stufen gerundet, damit es nach Würfeln aussieht und
+nicht nach Düne. Fast monochrom und bei 30 % Deckkraft — es ist Textur im Raum, nicht das Thema
+der Seite. Läuft mit 30 fps, pausiert im Hintergrund-Tab und steht still, wenn das System
+`prefers-reduced-motion` meldet.

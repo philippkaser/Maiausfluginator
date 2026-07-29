@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { api, ApiError } from "../lib/api.ts";
 import { useSession, useToast } from "../lib/store.tsx";
-import { Field } from "../components/ui.tsx";
+import { Field, Mark, Segmented } from "../components/ui.tsx";
 
 type Mode = "login" | "redeem";
 
@@ -32,7 +32,7 @@ export function Gate() {
       } else {
         const result = await api.login(handle, personalKey);
         setMe(result.me);
-        toast(`Willkommen zurück, ${result.me.displayName}.`, "success");
+        toast(`Willkommen zurück, ${result.me.displayName}.`);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Etwas ist schiefgelaufen.");
@@ -41,22 +41,23 @@ export function Gate() {
     }
   }
 
-  // Shown once, right after redeeming - this is the only time the key is visible.
+  // Shown once, right after redeeming — the only time the key is visible.
   if (freshKey) {
     return (
       <div className="gate">
-        <div className="glass glass--sheen gate__card fade-up">
-          <div className="gate__logo" />
-          <span className="eyebrow">Willkommen an Bord</span>
-          <h1 style={{ margin: "8px 0 14px" }}>Dein Schlüssel</h1>
-          <p className="muted">
-            Notier dir das jetzt. Der Schlüssel wird nur einmal angezeigt und ist zusammen mit deinem
-            Namen dein Login auf jedem weiteren Gerät.
+        <div className="card gate__card fade-in">
+          <div className="gate__mark">
+            <Mark size={30} />
+          </div>
+          <h1 style={{ fontSize: "1.8rem" }}>Dein Schlüssel</h1>
+          <p className="muted" style={{ marginTop: 10 }}>
+            Notier ihn dir jetzt. Er wird nur einmal angezeigt und ist zusammen mit deinem Namen dein
+            Login auf jedem weiteren Gerät.
           </p>
 
           <div className="keycard" style={{ margin: "20px 0" }}>
-            <div className="eyebrow" style={{ marginBottom: 8 }}>
-              Name: {freshKey.handle}
+            <div className="field__label" style={{ marginBottom: 6 }}>
+              {freshKey.handle}
             </div>
             <div className="keycard__code">{freshKey.key}</div>
           </div>
@@ -68,7 +69,7 @@ export function Gate() {
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(freshKey.key);
-                  toast("Schlüssel kopiert.", "success");
+                  toast("Schlüssel kopiert.");
                 } catch {
                   toast("Kopieren hat nicht geklappt – bitte abschreiben.", "error");
                 }
@@ -87,54 +88,41 @@ export function Gate() {
 
   return (
     <div className="gate">
-      <div className="glass glass--sheen gate__card fade-up">
-        <div className="gate__logo" />
-        <span className="eyebrow">Durst Brixen · intern</span>
-        <h1 style={{ margin: "8px 0 12px" }}>
-          Mai<span className="gradient-text">ausfluginator</span>
-        </h1>
-        <p className="muted">
-          Die Bewertungszentrale unserer Mai-Ausflüge. Vom Kilometerstand ab HQ über die Wartezeit
-          aufs Essen bis zum Foto vom Teller – hier landet alles.
+      <div className="card gate__card fade-in">
+        <div className="gate__mark">
+          <Mark size={30} />
+        </div>
+
+        <h1 style={{ fontSize: "1.8rem" }}>Maiausfluginator</h1>
+        <p className="muted" style={{ marginTop: 10 }}>
+          Die Bewertungszentrale unserer Mai-Ausflüge. Zutritt nur mit Einladung.
         </p>
 
         {needsBootstrap && (
-          <div className="keycard" style={{ marginTop: 18 }}>
-            <strong>Erster Start.</strong> Der Admin-Einladungscode steht in der Server-Konsole.
+          <div className="keycard small" style={{ marginTop: 18 }}>
+            Erster Start: der Admin-Einladungscode steht in der Server-Konsole.
           </div>
         )}
 
-        <div className="gate__tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            className="gate__tab"
-            aria-selected={mode === "login"}
-            onClick={() => {
-              setMode("login");
+        <div style={{ margin: "22px 0 18px" }}>
+          <Segmented
+            value={mode}
+            label="Zugang"
+            options={[
+              { value: "login", label: "Anmelden" },
+              { value: "redeem", label: "Einladung einlösen" },
+            ]}
+            onChange={(next) => {
+              setMode(next);
               setError(null);
             }}
-          >
-            Anmelden
-          </button>
-          <button
-            type="button"
-            role="tab"
-            className="gate__tab"
-            aria-selected={mode === "redeem"}
-            onClick={() => {
-              setMode("redeem");
-              setError(null);
-            }}
-          >
-            Einladung einlösen
-          </button>
+          />
         </div>
 
-        <form onSubmit={submit} className="stack" style={{ gap: 16 }}>
+        <form onSubmit={submit} className="stack" style={{ gap: 14 }}>
           {mode === "redeem" ? (
             <>
-              <Field label="Einladungscode" hint="Steht in deiner Einladung, Groß-/Kleinschreibung egal.">
+              <Field label="Einladungscode" hint="Groß-/Kleinschreibung egal.">
                 <input
                   className="input input--code"
                   value={code}
@@ -160,7 +148,7 @@ export function Gate() {
             </>
           ) : (
             <>
-              <Field label="Name" hint="Dein Anzeigename oder dein Kurzname.">
+              <Field label="Name">
                 <input
                   className="input"
                   value={handle}
@@ -184,20 +172,15 @@ export function Gate() {
             </>
           )}
 
-          {error && (
-            <div className="toast toast--error" style={{ animation: "none" }}>
-              {error}
-            </div>
-          )}
+          {error && <div className="inline-error">{error}</div>}
 
           <button type="submit" className="btn btn--primary btn--block" disabled={busy}>
             {busy ? "Moment…" : mode === "redeem" ? "Einladung einlösen" : "Anmelden"}
           </button>
         </form>
 
-        <p className="muted small" style={{ marginTop: 18 }}>
-          Kein Zugang? Frag jemanden aus der Runde nach einem Einladungscode – anders kommt hier
-          niemand rein.
+        <p className="dim small" style={{ marginTop: 18 }}>
+          Kein Zugang? Frag jemanden aus der Runde nach einem Einladungscode.
         </p>
       </div>
     </div>

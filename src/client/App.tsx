@@ -1,5 +1,5 @@
 import { Backdrop } from "./components/Backdrop.tsx";
-import { Avatar, Spinner } from "./components/ui.tsx";
+import { Avatar, Mark, Spinner } from "./components/ui.tsx";
 import { Link, useRouter } from "./lib/router.tsx";
 import { useSession } from "./lib/store.tsx";
 import { Admin } from "./pages/Admin.tsx";
@@ -25,11 +25,8 @@ function Topbar() {
     <header className="topbar">
       <div className="topbar__inner">
         <Link to="/" className="brand">
-          <span className="brand__mark" />
-          <span className="brand__text">
-            <span className="brand__title">Maiausfluginator</span>
-            <span className="brand__sub">Durst Brixen</span>
-          </span>
+          <Mark />
+          <span className="brand__title">Maiausfluginator</span>
         </Link>
 
         <nav className="nav">
@@ -52,7 +49,7 @@ function Topbar() {
             <Avatar name={me.displayName} hue={me.hue} />
             <button
               type="button"
-              className="btn btn--ghost btn--sm"
+              className="btn btn--quiet btn--sm"
               onClick={() => void signOut()}
               title={`Angemeldet als ${me.displayName}`}
             >
@@ -83,14 +80,14 @@ function Routes() {
       return me?.isAdmin ? (
         <Admin />
       ) : (
-        <div className="glass glass--pad">
+        <div className="card card--pad">
           <h2>Nur für Admins</h2>
           <p className="muted">Diese Seite ist der Verwaltung vorbehalten.</p>
         </div>
       );
     default:
       return (
-        <div className="glass glass--pad">
+        <div className="card card--pad">
           <h2>Seite nicht gefunden</h2>
           <p className="muted">
             Den Weg gibt es nicht. <Link to="/">Zurück zur Rangliste</Link>.

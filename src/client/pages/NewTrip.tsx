@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { api, ApiError } from "../lib/api.ts";
-import { formatMinutes, todayIso } from "../lib/format.ts";
+import { formatDecimal, formatMinutes, todayIso } from "../lib/format.ts";
 import { useRouter } from "../lib/router.tsx";
 import { useSession, useToast } from "../lib/store.tsx";
 import type { Restaurant } from "../../shared/types.ts";
-import { Chip, Field, Spinner } from "../components/ui.tsx";
+import { Field, Spinner, Tag } from "../components/ui.tsx";
 
 const EMPTY_PLACE = {
   name: "",
@@ -93,23 +93,22 @@ export function NewTrip() {
   }
 
   return (
-    <div className="stack stack--lg fade-up">
+    <div className="stack stack--lg fade-in">
       <div>
-        <span className="eyebrow">Neu</span>
-        <h1 style={{ margin: "8px 0 8px" }}>Ausflug eintragen</h1>
-        <p className="muted" style={{ maxWidth: "62ch" }}>
+        <h1>Ausflug eintragen</h1>
+        <p className="lead" style={{ marginTop: 10 }}>
           Lokal und Datum genügen. Entfernung und Fahrzeit ab {hq.label} rechnet der Maiausfluginator
           aus den Koordinaten – wenn du es genauer weißt, trag die echten Werte ein.
         </p>
       </div>
 
-      <form onSubmit={submit} className="detail__grid detail__grid--even">
-        <section className="glass glass--sheen glass--pad stack">
+      <form onSubmit={submit} className="split split--even">
+        <section className="card card--pad stack">
           <div className="row row--between">
             <h2>Wohin ging es?</h2>
             <button
               type="button"
-              className="btn btn--ghost btn--sm"
+              className="btn btn--quiet btn--sm"
               onClick={() => setCreatingPlace((value) => !value)}
             >
               {creatingPlace ? "Aus Liste wählen" : "Neues Lokal anlegen"}
@@ -219,7 +218,7 @@ export function NewTrip() {
                   <option value="">Bitte wählen…</option>
                   {restaurants.map((restaurant) => (
                     <option key={restaurant.id} value={restaurant.id}>
-                      {restaurant.name} — {restaurant.town} ({restaurant.distanceKm.toFixed(1)} km)
+                      {restaurant.name} — {restaurant.town} ({formatDecimal(restaurant.distanceKm)} km)
                     </option>
                   ))}
                 </select>
@@ -227,17 +226,17 @@ export function NewTrip() {
 
               {selected && (
                 <div className="row row--tight">
-                  <Chip>{selected.distanceKm.toFixed(1)} km ab HQ</Chip>
-                  <Chip>{formatMinutes(selected.travelMin)} Fahrt</Chip>
-                  {selected.cuisine && <Chip tone="ghost">{selected.cuisine}</Chip>}
-                  {selected.travelSource === "estimated" && <Chip tone="ghost">geschätzt</Chip>}
+                  <Tag>{formatDecimal(selected.distanceKm)} km ab HQ</Tag>
+                  <Tag>{formatMinutes(selected.travelMin)} Fahrt</Tag>
+                  {selected.cuisine && <Tag>{selected.cuisine}</Tag>}
+                  {selected.travelSource === "estimated" && <Tag>geschätzt</Tag>}
                 </div>
               )}
             </>
           )}
         </section>
 
-        <section className="glass glass--sheen glass--pad stack">
+        <section className="card card--pad stack">
           <h2>Wann & was</h2>
 
           <Field label="Datum">
@@ -272,7 +271,7 @@ export function NewTrip() {
           <button type="submit" className="btn btn--primary btn--block" disabled={busy}>
             {busy ? "Speichern…" : "Ausflug anlegen"}
           </button>
-          <button type="button" className="btn btn--ghost btn--block" onClick={() => navigate("/")}>
+          <button type="button" className="btn btn--quiet btn--block" onClick={() => navigate("/")}>
             Abbrechen
           </button>
         </section>

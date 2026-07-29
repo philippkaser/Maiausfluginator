@@ -47,6 +47,17 @@ export function formatHours(minutes: number): string {
   return `${hours.toFixed(hours < 10 ? 1 : 0).replace(".", ",")} h`;
 }
 
+const decimal = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/** German decimals: 87,5 rather than 87.5. */
+export function formatDecimal(value: number): string {
+  return decimal.format(value);
+}
+
+export function formatKm(km: number): string {
+  return `${decimal.format(km)} km`;
+}
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";

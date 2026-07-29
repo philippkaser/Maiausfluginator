@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 
 import { api, ApiError } from "../lib/api.ts";
-import { formatDate, formatMinutes, formatRelative, formatWeekday } from "../lib/format.ts";
+import {
+  formatDate,
+  formatDecimal,
+  formatMinutes,
+  formatRelative,
+  formatWeekday,
+} from "../lib/format.ts";
 import { Link, useRouter } from "../lib/router.tsx";
 import { useSession, useStoredWeights, useToast } from "../lib/store.tsx";
 import { scoreTrip } from "../../shared/scoring.ts";
@@ -9,7 +15,7 @@ import { DIMENSION_LABELS, DIMENSIONS } from "../../shared/types.ts";
 import type { TripDetail } from "../../shared/types.ts";
 import { PhotoPanel } from "../components/PhotoPanel.tsx";
 import { RatingForm } from "../components/RatingForm.tsx";
-import { Avatar, Bar, Chip, Empty, ScoreRing, Spinner } from "../components/ui.tsx";
+import { Avatar, Bar, Empty, ScoreRing, Spinner, Tag } from "../components/ui.tsx";
 
 export function TripPage({ tripId }: { tripId: string }) {
   const { me, hq } = useSession();
@@ -41,7 +47,7 @@ export function TripPage({ tripId }: { tripId: string }) {
 
   if (missing) {
     return (
-      <div className="glass glass--pad">
+      <div className="card card--pad">
         <Empty title="Diesen Ausflug gibt es nicht (mehr).">
           <Link to="/" className="btn" style={{ marginTop: 12 }}>
             Zur Rangliste
@@ -54,7 +60,7 @@ export function TripPage({ tripId }: { tripId: string }) {
   if (!trip) {
     return (
       <div className="center-screen">
-        <Spinner label="Ausflug wird geladen…" />
+        <Spinner label="Wird geladen…" />
       </div>
     );
   }
@@ -75,80 +81,72 @@ export function TripPage({ tripId }: { tripId: string }) {
   }
 
   return (
-    <div className="stack stack--lg fade-up">
-      <section className="glass glass--sheen hero">
-        <div className="row row--between" style={{ marginBottom: 18 }}>
-          <Link to="/" className="btn btn--ghost btn--sm">
-            ← Rangliste
-          </Link>
-          {canEdit && (
-            <button type="button" className="btn btn--danger btn--sm" onClick={removeTrip}>
-              Ausflug löschen
-            </button>
-          )}
-        </div>
+    <div className="stack stack--lg fade-in">
+      <div className="row row--between">
+        <Link to="/" className="btn btn--quiet btn--sm">
+          ← Rangliste
+        </Link>
+        {canEdit && (
+          <button type="button" className="btn btn--danger btn--sm" onClick={removeTrip}>
+            Ausflug löschen
+          </button>
+        )}
+      </div>
 
-        <div className="hero__grid">
-          <div>
-            <span className="eyebrow">
-              {formatWeekday(trip.tripDate)}, {formatDate(trip.tripDate)}
-            </span>
-            <h1 style={{ margin: "10px 0 6px" }}>{restaurant.name}</h1>
-            <p className="muted" style={{ marginBottom: 16 }}>
-              {restaurant.town}
-              {restaurant.cuisine ? ` · ${restaurant.cuisine}` : ""}
-              {restaurant.address ? ` · ${restaurant.address}` : ""}
-            </p>
+      <header className="row row--between" style={{ alignItems: "flex-start", gap: 28 }}>
+        <div style={{ minWidth: 0, flex: "1 1 340px" }}>
+          <p className="small dim" style={{ marginBottom: 6 }}>
+            {formatWeekday(trip.tripDate)}, {formatDate(trip.tripDate)}
+          </p>
+          <h1>{restaurant.name}</h1>
+          <p className="muted" style={{ margin: "8px 0 16px" }}>
+            {[restaurant.town, restaurant.cuisine, restaurant.address].filter(Boolean).join(" · ")}
+          </p>
 
-            <div className="row row--tight">
-              <Chip title={`Einfache Strecke ab ${hq.label}`}>
-                {restaurant.distanceKm.toFixed(1)} km ab HQ
-              </Chip>
-              <Chip title="Einfache Fahrzeit">{formatMinutes(restaurant.travelMin)} Fahrt</Chip>
-              <Chip title="Hin und zurück">
-                {(restaurant.distanceKm * 2).toFixed(1)} km retour
-              </Chip>
-              {agg.waitMedian !== null && (
-                <Chip title={`${agg.waitCount} Angaben`}>
-                  {Math.round(agg.waitMedian)} min aufs Essen
-                </Chip>
-              )}
-              {restaurant.travelSource === "estimated" && (
-                <Chip tone="ghost" title="Aus den Koordinaten geschätzt, nicht nachgemessen">
-                  Anfahrt geschätzt
-                </Chip>
-              )}
-              {restaurant.website && (
-                <a className="chip" href={restaurant.website} target="_blank" rel="noreferrer noopener">
-                  Website ↗
-                </a>
-              )}
-            </div>
-
-            {trip.notes && <p style={{ marginTop: 18, color: "var(--text-2)" }}>{trip.notes}</p>}
-
-            <p className="muted small" style={{ marginTop: 16 }}>
-              Eingetragen von {trip.createdByName} · {formatRelative(trip.createdAt)}
-              {trip.title !== restaurant.name ? ` · „${trip.title}“` : ""}
-            </p>
+          <div className="row row--tight">
+            <Tag title={`Einfache Strecke ab ${hq.label}`}>
+              {formatDecimal(restaurant.distanceKm)} km ab HQ
+            </Tag>
+            <Tag title="Einfache Fahrzeit">{formatMinutes(restaurant.travelMin)} Fahrt</Tag>
+            {agg.waitMedian !== null && (
+              <Tag title={`${agg.waitCount} Angaben`}>
+                {Math.round(agg.waitMedian)} min aufs Essen
+              </Tag>
+            )}
+            {restaurant.travelSource === "estimated" && (
+              <Tag title="Aus den Koordinaten geschätzt, nicht nachgemessen">Anfahrt geschätzt</Tag>
+            )}
+            {restaurant.website && (
+              <a className="tag" href={restaurant.website} target="_blank" rel="noreferrer noopener">
+                Website ↗
+              </a>
+            )}
           </div>
 
-          <div className="stack" style={{ alignItems: "center", gap: 14 }}>
-            <ScoreRing score={breakdown.score} size={128} />
-            <div className="muted small" style={{ textAlign: "center" }}>
-              {agg.ratingCount === 0
-                ? "Noch keine Bewertung"
-                : `${agg.ratingCount} ${agg.ratingCount === 1 ? "Stimme" : "Stimmen"} · ${agg.photoCount} Fotos`}
-            </div>
+          {trip.notes && <p style={{ marginTop: 18, color: "var(--label-2)" }}>{trip.notes}</p>}
+
+          <p className="small dim" style={{ marginTop: 16 }}>
+            Eingetragen von {trip.createdByName} · {formatRelative(trip.createdAt)}
+            {trip.title !== restaurant.name ? ` · „${trip.title}“` : ""}
+          </p>
+        </div>
+
+        <div className="stack" style={{ alignItems: "center", gap: 10, flex: "0 0 auto" }}>
+          <ScoreRing score={breakdown.score} size={124} />
+          <div className="small dim" style={{ textAlign: "center" }}>
+            {agg.ratingCount === 0
+              ? "Noch keine Bewertung"
+              : `${agg.ratingCount} ${agg.ratingCount === 1 ? "Stimme" : "Stimmen"} · ${agg.photoCount} Fotos`}
           </div>
         </div>
-      </section>
+      </header>
 
-      <div className="detail__grid">
+      <div className="split">
         <div className="stack">
-          <section className="glass glass--sheen glass--pad">
-            <span className="eyebrow">Woraus der Score entsteht</span>
-            <h2 style={{ margin: "4px 0 18px" }}>Aufschlüsselung</h2>
+          <section className="card card--pad">
+            <div className="section__head">
+              <h2>Aufschlüsselung</h2>
+            </div>
             <div className="bars">
               {breakdown.parts.map((part) => (
                 <Bar
@@ -160,54 +158,55 @@ export function TripPage({ tripId }: { tripId: string }) {
               ))}
             </div>
             {breakdown.partial && (
-              <p className="muted small" style={{ marginTop: 14 }}>
-                Für einzelne Komponenten fehlen Daten – die übrigen Gewichte wurden hochgerechnet.
+              <p className="small dim" style={{ marginTop: 14 }}>
+                Für einzelne Komponenten fehlen Daten — die übrigen Gewichte wurden hochgerechnet.
               </p>
             )}
           </section>
 
-          <section className="glass glass--sheen glass--pad">
-            <span className="eyebrow">Stimmen</span>
-            <h2 style={{ margin: "4px 0 18px" }}>
-              {trip.ratings.length} {trip.ratings.length === 1 ? "Bewertung" : "Bewertungen"}
-            </h2>
+          <section className="card card--pad">
+            <div className="section__head">
+              <h2>
+                {trip.ratings.length} {trip.ratings.length === 1 ? "Bewertung" : "Bewertungen"}
+              </h2>
+            </div>
 
             {trip.ratings.length === 0 ? (
               <Empty title="Noch hat niemand etwas gesagt.">
-                <p className="small">Sei die erste Stimme – das Formular ist gleich daneben.</p>
+                <p className="small">Sei die erste Stimme — das Formular ist gleich daneben.</p>
               </Empty>
             ) : (
-              <div className="reviewlist">
+              <div className="reviews">
                 {trip.ratings.map((rating) => (
                   <article key={rating.id} className="review">
                     <div className="review__head">
                       <Avatar name={rating.userName} hue={rating.userHue} size="sm" />
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 560 }}>
+                        <div style={{ fontWeight: 500 }}>
                           {rating.userName}
-                          {rating.userId === me?.id && <span className="muted small"> · du</span>}
+                          {rating.userId === me?.id && <span className="dim small"> · du</span>}
                         </div>
-                        <div className="muted small">{formatRelative(rating.updatedAt)}</div>
+                        <div className="dim small">{formatRelative(rating.updatedAt)}</div>
                       </div>
                       <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                        <div className="rate__score" style={{ fontSize: "1.15rem" }}>
-                          {(
+                        <div className="rate__score">
+                          {formatDecimal(
                             DIMENSIONS.reduce((sum, dimension) => sum + rating[dimension], 0) /
-                            DIMENSIONS.length
-                          ).toFixed(1)}
+                              DIMENSIONS.length,
+                          )}
                         </div>
-                        <div className="muted small">Schnitt</div>
+                        <div className="dim small">Schnitt</div>
                       </div>
                     </div>
 
                     <div className="review__scores">
                       {DIMENSIONS.map((dimension) => (
-                        <span key={dimension} className="pill">
+                        <span key={dimension}>
                           {DIMENSION_LABELS[dimension]} <b>{rating[dimension]}</b>
                         </span>
                       ))}
                       {rating.waitMinutes !== null && (
-                        <span className="pill">
+                        <span>
                           Wartezeit <b>{rating.waitMinutes} min</b>
                         </span>
                       )}
@@ -227,11 +226,9 @@ export function TripPage({ tripId }: { tripId: string }) {
           />
         </div>
 
-        <div className="stack">
-          <section className="glass glass--sheen glass--pad" style={{ position: "sticky", top: 92 }}>
-            <RatingForm trip={trip} onSaved={setTrip} />
-          </section>
-        </div>
+        <section className="card card--pad" style={{ position: "sticky", top: 84 }}>
+          <RatingForm trip={trip} onSaved={setTrip} />
+        </section>
       </div>
     </div>
   );

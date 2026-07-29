@@ -4,7 +4,7 @@ import { api, ApiError } from "../lib/api.ts";
 import { formatRelative } from "../lib/format.ts";
 import { useToast } from "../lib/store.tsx";
 import type { Invite } from "../../shared/types.ts";
-import { Chip, Empty, Field, Spinner } from "../components/ui.tsx";
+import { Empty, Field, Spinner, Tag } from "../components/ui.tsx";
 
 export function Admin() {
   const toast = useToast();
@@ -58,17 +58,16 @@ export function Admin() {
   const used = invites?.filter((invite) => invite.usedAt !== null) ?? [];
 
   return (
-    <div className="stack stack--lg fade-up">
+    <div className="stack stack--lg fade-in">
       <div>
-        <span className="eyebrow">Verwaltung</span>
-        <h1 style={{ margin: "8px 0 8px" }}>Einladungen</h1>
-        <p className="muted" style={{ maxWidth: "62ch" }}>
+        <h1>Einladungen</h1>
+        <p className="lead" style={{ marginTop: 10 }}>
           Jeder Code gilt genau einmal. Wer ihn einlöst, wählt seinen Namen und bekommt einen
           persönlichen Schlüssel – den solltest du nie zu sehen bekommen.
         </p>
       </div>
 
-      <section className="glass glass--sheen glass--pad">
+      <section className="card card--pad">
         <form onSubmit={create} className="stack">
           <Field label="Notiz" hint="Für wen ist der Code? Nur intern sichtbar.">
             <input
@@ -93,7 +92,7 @@ export function Admin() {
         </form>
       </section>
 
-      <section className="glass glass--sheen glass--pad">
+      <section className="card card--pad">
         <h2 style={{ marginBottom: 16 }}>Offene Codes ({open.length})</h2>
         {invites === null ? (
           <Spinner />
@@ -104,18 +103,18 @@ export function Admin() {
         ) : (
           <div className="stack stack--sm">
             {open.map((invite) => (
-              <div key={invite.code} className="review row row--between">
+              <div key={invite.code} className="row row--between" style={{ padding: "12px 0", borderTop: "1px solid var(--hairline)" }}>
                 <div>
                   <div className="mono" style={{ fontSize: "1.05rem", fontWeight: 600 }}>
                     {invite.code}
                   </div>
-                  <div className="muted small">
+                  <div className="dim small">
                     {invite.note ?? "ohne Notiz"} · erstellt {formatRelative(invite.createdAt)}
                     {invite.createdByName ? ` von ${invite.createdByName}` : ""}
                   </div>
                 </div>
                 <div className="row row--tight">
-                  {invite.grantsAdmin && <Chip tone="gold">Admin</Chip>}
+                  {invite.grantsAdmin && <Tag accent>Admin</Tag>}
                   <button
                     type="button"
                     className="btn btn--sm"
@@ -145,7 +144,7 @@ export function Admin() {
       </section>
 
       {used.length > 0 && (
-        <section className="glass glass--sheen glass--pad">
+        <section className="card card--pad">
           <h2 style={{ marginBottom: 16 }}>Eingelöste Codes ({used.length})</h2>
           <div className="table__scroll">
             <table className="table">
@@ -162,8 +161,8 @@ export function Admin() {
                   <tr key={invite.code}>
                     <td className="mono small">{invite.code}</td>
                     <td>{invite.usedByName ?? "–"}</td>
-                    <td className="muted small">{invite.usedAt ? formatRelative(invite.usedAt) : "–"}</td>
-                    <td className="muted small">{invite.note ?? "–"}</td>
+                    <td className="dim small">{invite.usedAt ? formatRelative(invite.usedAt) : "–"}</td>
+                    <td className="dim small">{invite.note ?? "–"}</td>
                   </tr>
                 ))}
               </tbody>

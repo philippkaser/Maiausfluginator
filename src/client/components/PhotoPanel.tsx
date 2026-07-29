@@ -100,14 +100,11 @@ export function PhotoPanel({
   }, [lightbox, photos]);
 
   return (
-    <section className="glass glass--sheen glass--pad">
-      <div className="row row--between" style={{ marginBottom: 16 }}>
-        <div>
-          <span className="eyebrow">Beweisfotos</span>
-          <h2 style={{ marginTop: 4 }}>
-            {photos.length} {photos.length === 1 ? "Bild" : "Bilder"}
-          </h2>
-        </div>
+    <section className="card card--pad">
+      <div className="section__head">
+        <h2>
+          {photos.length} {photos.length === 1 ? "Foto" : "Fotos"}
+        </h2>
         <button type="button" className="btn btn--sm" onClick={() => inputRef.current?.click()}>
           Foto hinzufügen
         </button>
@@ -166,11 +163,11 @@ export function PhotoPanel({
         }}
       >
         {uploading > 0 ? (
-          <span className="muted small">
+          <span className="dim small">
             {uploading} {uploading === 1 ? "Bild wird" : "Bilder werden"} hochgeladen…
           </span>
         ) : (
-          <span className="muted small">
+          <span className="dim small">
             Bilder hierher ziehen oder klicken · JPEG, PNG, WebP, HEIC · max. {MAX_MB} MB
           </span>
         )}
@@ -234,11 +231,11 @@ export function PhotoPanel({
                 ♥ {lightbox.likes}
               </button>
               {(me?.id === lightbox.userId || me?.isAdmin) && (
-                <button type="button" className="btn btn--ghost btn--sm" onClick={() => remove(lightbox)}>
+                <button type="button" className="btn btn--quiet btn--sm" onClick={() => remove(lightbox)}>
                   Löschen
                 </button>
               )}
-              <button type="button" className="btn btn--ghost btn--sm" onClick={() => setLightbox(null)}>
+              <button type="button" className="btn btn--quiet btn--sm" onClick={() => setLightbox(null)}>
                 Schließen
               </button>
             </div>

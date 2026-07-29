@@ -4,7 +4,7 @@ import { api, ApiError } from "../lib/api.ts";
 import { formatDate } from "../lib/format.ts";
 import { useSession, useToast } from "../lib/store.tsx";
 import type { Member } from "../../shared/types.ts";
-import { Avatar, Chip, Spinner } from "../components/ui.tsx";
+import { Avatar, Spinner, Tag } from "../components/ui.tsx";
 
 export function Members() {
   const { me } = useSession();
@@ -30,12 +30,9 @@ export function Members() {
   }
 
   return (
-    <div className="stack stack--lg fade-up">
+    <div className="stack stack--lg fade-in">
       <div className="pagehead">
-        <div>
-          <span className="eyebrow">Die Runde</span>
-          <h1 style={{ marginTop: 8 }}>Mitglieder</h1>
-        </div>
+<h1>Mitglieder</h1>
         <button type="button" className="btn btn--sm" onClick={rotate}>
           Meinen Schlüssel erneuern
         </button>
@@ -43,7 +40,7 @@ export function Members() {
 
       {newKey && (
         <div className="keycard">
-          <div className="eyebrow" style={{ marginBottom: 8 }}>
+          <div className="field__label" style={{ marginBottom: 8 }}>
             Neuer Schlüssel – nur jetzt sichtbar
           </div>
           <div className="keycard__code">{newKey}</div>
@@ -58,7 +55,7 @@ export function Members() {
         </div>
       )}
 
-      <section className="glass glass--sheen glass--pad">
+      <section className="card card--pad">
         {members === null ? (
           <Spinner label="Mitglieder werden geladen…" />
         ) : (
@@ -82,23 +79,23 @@ export function Members() {
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontWeight: 560 }}>
                             {member.displayName}
-                            {member.id === me?.id && <span className="muted small"> · du</span>}
+                            {member.id === me?.id && <span className="dim small"> · du</span>}
                           </div>
-                          <div className="muted small mono">{member.handle}</div>
+                          <div className="dim small mono">{member.handle}</div>
                         </div>
-                        {member.isAdmin && <Chip tone="ghost">Admin</Chip>}
+                        {member.isAdmin && <Tag>Admin</Tag>}
                       </div>
                     </td>
                     <td className="tnum">{member.ratingCount}</td>
                     <td className="tnum">{member.photoCount}</td>
                     <td className="tnum">
                       {member.avgGiven === null ? (
-                        <span className="muted">–</span>
+                        <span className="dim">–</span>
                       ) : (
                         `${member.avgGiven.toFixed(1)} / 10`
                       )}
                     </td>
-                    <td className="muted small">
+                    <td className="dim small">
                       {formatDate(new Date(member.createdAt).toISOString().slice(0, 10))}
                     </td>
                   </tr>
@@ -109,7 +106,7 @@ export function Members() {
         )}
       </section>
 
-      <p className="muted small">
+      <p className="dim small">
         Der „Schnitt vergeben“ zeigt, wie streng jemand bewertet – praktisch, wenn man wissen will,
         ob eine 6 von dieser Person schon ein Lob ist.
       </p>

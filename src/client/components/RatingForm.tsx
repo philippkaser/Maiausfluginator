@@ -81,28 +81,24 @@ export function RatingForm({
 
   return (
     <form onSubmit={save} className="stack">
-      <div className="row row--between">
-        <div>
-          <span className="eyebrow">Deine Stimme</span>
-          <h2 style={{ marginTop: 4 }}>{existing ? "Bewertung anpassen" : "Wie war es?"}</h2>
-        </div>
+      <div className="section__head" style={{ marginBottom: 4 }}>
+        <h2>{existing ? "Deine Bewertung" : "Wie war es?"}</h2>
         {existing && (
-          <button type="button" className="btn btn--ghost btn--sm" onClick={remove} disabled={busy}>
+          <button type="button" className="btn btn--quiet btn--sm" onClick={remove} disabled={busy}>
             Löschen
           </button>
         )}
       </div>
 
-      <div className="stack stack--sm">
+      <div>
         {DIMENSIONS.map((dimension) => (
           <div key={dimension} className="rate">
             <div className="rate__head">
-              <span>
-                <span className="rate__name">{DIMENSION_LABELS[dimension]}</span>
-                <br />
-                <span className="rate__hint">{DIMENSION_HINTS[dimension]}</span>
-              </span>
+              <span className="rate__name">{DIMENSION_LABELS[dimension]}</span>
               <span className="rate__score">{draft[dimension]}</span>
+            </div>
+            <div className="rate__hint" style={{ marginBottom: 6 }}>
+              {DIMENSION_HINTS[dimension]}
             </div>
             <input
               type="range"

@@ -11,6 +11,7 @@
  */
 
 import type { Dimension, TripAggregate } from "./types.ts";
+import { de1 } from "./num.ts";
 
 export const COMPONENTS = [
   "essen",
@@ -138,7 +139,7 @@ export function scoreTrip(agg: TripAggregate, weights: Weights = DEFAULT_WEIGHTS
     raw.push({
       component: dim,
       value: mean === null ? null : ratingScore(mean),
-      detail: mean === null ? "keine Bewertung" : `${mean.toFixed(1)} / 10`,
+      detail: mean === null ? "keine Bewertung" : `${de1(mean)} / 10`,
     });
   }
 
@@ -151,7 +152,7 @@ export function scoreTrip(agg: TripAggregate, weights: Weights = DEFAULT_WEIGHTS
   raw.push({
     component: "anfahrt",
     value: travelScore(agg.travelMin, agg.distanceKm),
-    detail: `${agg.travelMin} min · ${agg.distanceKm.toFixed(1)} km ab HQ`,
+    detail: `${agg.travelMin} min · ${de1(agg.distanceKm)} km ab HQ`,
   });
 
   // Only components with data get to vote; their weights are renormalised so a
