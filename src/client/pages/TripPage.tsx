@@ -15,13 +15,14 @@ import { DIMENSION_LABELS, DIMENSIONS } from "../../shared/types.ts";
 import type { TripDetail } from "../../shared/types.ts";
 import { PhotoPanel } from "../components/PhotoPanel.tsx";
 import { RatingForm } from "../components/RatingForm.tsx";
-import { Avatar, Bar, Empty, ScoreRing, Spinner, Tag } from "../components/ui.tsx";
+import { Avatar, Bar, Empty, ScoreRing, Spinner, Tag, useSpotlight } from "../components/ui.tsx";
 
 export function TripPage({ tripId }: { tripId: string }) {
   const { me, hq } = useSession();
   const { weights } = useStoredWeights();
   const { navigate } = useRouter();
   const toast = useToast();
+  const spotlight = useSpotlight();
 
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [missing, setMissing] = useState(false);
@@ -93,12 +94,21 @@ export function TripPage({ tripId }: { tripId: string }) {
         )}
       </div>
 
-      <header className="row row--between" style={{ alignItems: "flex-start", gap: 28 }}>
+      <header
+        className="card card--pad row row--between"
+        style={{ alignItems: "flex-start", gap: 28 }}
+        {...spotlight}
+      >
         <div style={{ minWidth: 0, flex: "1 1 340px" }}>
-          <p className="small dim" style={{ marginBottom: 6 }}>
+          <span className="eyebrow">
             {formatWeekday(trip.tripDate)}, {formatDate(trip.tripDate)}
-          </p>
-          <h1>{restaurant.name}</h1>
+          </span>
+          <h1
+            className="display"
+            style={{ marginTop: 12, fontSize: "clamp(1.7rem, 1.2rem + 1.9vw, 2.45rem)" }}
+          >
+            {restaurant.name}
+          </h1>
           <p className="muted" style={{ margin: "8px 0 16px" }}>
             {[restaurant.town, restaurant.cuisine, restaurant.address].filter(Boolean).join(" · ")}
           </p>
@@ -123,7 +133,7 @@ export function TripPage({ tripId }: { tripId: string }) {
             )}
           </div>
 
-          {trip.notes && <p style={{ marginTop: 18, color: "var(--label-2)" }}>{trip.notes}</p>}
+          {trip.notes && <p className="muted" style={{ marginTop: 18 }}>{trip.notes}</p>}
 
           <p className="small dim" style={{ marginTop: 16 }}>
             Eingetragen von {trip.createdByName} · {formatRelative(trip.createdAt)}
@@ -226,7 +236,7 @@ export function TripPage({ tripId }: { tripId: string }) {
           />
         </div>
 
-        <section className="card card--pad" style={{ position: "sticky", top: 84 }}>
+        <section className="card card--pad" style={{ position: "sticky", top: 96 }}>
           <RatingForm trip={trip} onSaved={setTrip} />
         </section>
       </div>

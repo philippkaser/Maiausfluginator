@@ -140,21 +140,31 @@ bun run typecheck
 
 ## Aussehen
 
-Dunkel, zurückhaltend, typografisch. Es gibt **eine** Akzentfarbe (`--accent`), Trennung passiert
-über Haarlinien, Tiefe über Unschärfe und Kontrast statt über Leuchten. Die Rangliste ist eine
-gruppierte Liste mit Trennlinien, keine Sammlung schwebender Kacheln; Sortierung und Presets
-laufen über Segmented Controls. Alle Tokens stehen oben in `styles.css` — wer die Akzentfarbe
-ändern will, ändert eine Zeile.
+Glas über einer Aurora. Alles auf dem Bildschirm ist eines von drei Dingen: der lebende
+Farbverlauf im Grund, eine Glasscheibe darauf, oder Typografie. Tiefe entsteht wie bei echtem
+Glas — eine helle Kante dort, wo das Licht auftrifft, ein dunkler Schlagschatten darunter,
+und eine Unschärfe, die die Farbe von hinten aufnimmt.
 
-Der Hintergrund ist ein isometrisches Voxel-Feld auf einem Canvas, formatfüllend über den
-ganzen Viewport: die Höhen kommen aus ein paar überlagerten Sinuswellen und werden auf acht
-Stufen gerundet, damit es nach Würfeln aussieht und nicht nach Düne. Fast monochrom und bei
-34 % Deckkraft — es ist Textur im Raum, nicht das Thema der Seite.
+Zwei Farbverläufe tragen die ganze Palette: **spring** (Mint → Chartreuse) für den Akzent,
+Scores und alles Bejahende, **dusk** (Aprikose → Rosé) als warmer Gegenpunkt, sparsam
+eingesetzt. Beide stehen samt allen anderen Tokens oben in `styles.css` — wer die Anmutung
+ändern will, ändert zwei Zeilen.
 
-Das Feld ist unbegrenzt: statt einen festen Block Würfel zu legen und zu hoffen, dass er reicht,
-wird die isometrische Projektion invertiert, um genau die Gitterzellen zu bestimmen, die im
-Viewport landen. Das füllt jedes Seitenverhältnis von Kante zu Kante und zeichnet nichts, was
-danebenliegt. Die Kachelgröße skaliert mit dem Viewport und hat ein hartes Würfelbudget als
-Bremse — gemessen ist das Zeichnen geometrie- und nicht füllratenlimitiert, die Anzahl der
-Würfel ist also der einzige Hebel, der zählt. Läuft mit 30 fps, pausiert im Hintergrund-Tab und
-steht still, wenn das System `prefers-reduced-motion` meldet.
+Trennung passiert weiter über Haarlinien: die Rangliste ist eine gruppierte Liste, keine
+Sammlung schwebender Kacheln. Sortierung und Presets laufen über Segmented Controls, deren
+helle Pille zwischen den Optionen gleitet, statt ein- und auszuschalten — die Breite wird
+gemessen, damit die Beschriftungen beliebig lang sein dürfen. Zeigt die Maus auf eine
+Scheibe, wandert ein weiches Glanzlicht mit; die Position landet als `--mx`/`--my` am
+Element, gerendert wird in CSS.
+
+Der Hintergrund ist ein Fragment-Shader: zwei Runden Domain-Warping über fbm-Value-Noise,
+eingefärbt, indem vier Palettenstopps entlang des Warp-Feldes gemischt werden. Genau das
+unterscheidet ihn von den üblichen zwei weichgezeichneten Farbklecksen — die Grenzen zwischen
+den Farben werden ineinander gefaltet statt überblendet, das Feld bekommt Filamente und
+Wirbel. Fast alles bleibt Tinte und Mitternachtsblau; das Grün taucht nur dort auf, wo die
+Faltung am schärfsten ist.
+
+Er ist bewusst billig: Das Feld hat keine Details oberhalb weniger Zyklen pro Bildschirm,
+also rendert er bei 55 % Auflösung mit 30 fps und wird vom Compositor gratis hochskaliert.
+Im Hintergrund-Tab pausiert er, bei `prefers-reduced-motion` steht ein einzelnes Standbild,
+und wo es gar kein WebGL gibt, springt ein statischer CSS-Verlauf ein.

@@ -3,7 +3,7 @@ import type { Trip } from "../../shared/types.ts";
 import { formatDecimal, formatShortDate } from "../lib/format.ts";
 import { photoUrl } from "../lib/api.ts";
 import { Link } from "../lib/router.tsx";
-import { Chevron, toneColor } from "./ui.tsx";
+import { Chevron, useSpotlight } from "./ui.tsx";
 
 /**
  * One line of the ranking. The secondary line carries everything that used to
@@ -12,6 +12,7 @@ import { Chevron, toneColor } from "./ui.tsx";
 export function TripRow({ trip, rank, weights }: { trip: Trip; rank: number; weights: Weights }) {
   const { score } = scoreTrip(trip.aggregate, weights);
   const { aggregate: agg, restaurant } = trip;
+  const spotlight = useSpotlight();
 
   const facts = [
     restaurant.town,
@@ -25,6 +26,7 @@ export function TripRow({ trip, rank, weights }: { trip: Trip; rank: number; wei
     <Link
       to={`/ausflug/${trip.id}`}
       className={`list__row${rank <= 3 ? " list__row--podium" : ""}`}
+      {...spotlight}
     >
       <span className="list__rank">{rank}</span>
 
@@ -58,7 +60,10 @@ export function TripRow({ trip, rank, weights }: { trip: Trip; rank: number; wei
         <span className="list__meter">
           <span
             className="list__meterfill"
-            style={{ width: `${score ?? 0}%`, background: toneColor(score) }}
+            style={{
+              width: `${score ?? 0}%`,
+              ...(score === null ? { background: "rgba(255,255,255,0.2)" } : null),
+            }}
           />
         </span>
       </span>

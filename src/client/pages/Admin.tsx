@@ -59,9 +59,10 @@ export function Admin() {
 
   return (
     <div className="stack stack--lg fade-in">
-      <div>
-        <h1>Einladungen</h1>
-        <p className="lead" style={{ marginTop: 10 }}>
+      <div className="hero">
+        <span className="eyebrow">Verwaltung</span>
+        <h1 className="display hero__title">Einladungen</h1>
+        <p className="lead" style={{ marginTop: 14 }}>
           Jeder Code gilt genau einmal. Wer ihn einlöst, wählt seinen Namen und bekommt einen
           persönlichen Schlüssel – den solltest du nie zu sehen bekommen.
         </p>
@@ -103,11 +104,9 @@ export function Admin() {
         ) : (
           <div className="stack stack--sm">
             {open.map((invite) => (
-              <div key={invite.code} className="row row--between" style={{ padding: "12px 0", borderTop: "1px solid var(--hairline)" }}>
+              <div key={invite.code} className="invite row row--between">
                 <div>
-                  <div className="mono" style={{ fontSize: "1.05rem", fontWeight: 600 }}>
-                    {invite.code}
-                  </div>
+                  <div className="invite__code mono">{invite.code}</div>
                   <div className="dim small">
                     {invite.note ?? "ohne Notiz"} · erstellt {formatRelative(invite.createdAt)}
                     {invite.createdByName ? ` von ${invite.createdByName}` : ""}

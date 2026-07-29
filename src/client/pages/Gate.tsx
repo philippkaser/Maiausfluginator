@@ -2,13 +2,14 @@ import { useState } from "react";
 
 import { api, ApiError } from "../lib/api.ts";
 import { useSession, useToast } from "../lib/store.tsx";
-import { Field, Mark, Segmented } from "../components/ui.tsx";
+import { Field, Mark, Segmented, useSpotlight } from "../components/ui.tsx";
 
 type Mode = "login" | "redeem";
 
 export function Gate() {
   const { setMe, needsBootstrap } = useSession();
   const toast = useToast();
+  const spotlight = useSpotlight();
 
   const [mode, setMode] = useState<Mode>(needsBootstrap ? "redeem" : "login");
   const [busy, setBusy] = useState(false);
@@ -45,11 +46,13 @@ export function Gate() {
   if (freshKey) {
     return (
       <div className="gate">
-        <div className="card gate__card fade-in">
+        <div className="card gate__card fade-in" {...spotlight}>
           <div className="gate__mark">
-            <Mark size={30} />
+            <Mark size={34} />
           </div>
-          <h1 style={{ fontSize: "1.8rem" }}>Dein Schlüssel</h1>
+          <h1 className="display" style={{ fontSize: "1.9rem" }}>
+            Dein Schlüssel
+          </h1>
           <p className="muted" style={{ marginTop: 10 }}>
             Notier ihn dir jetzt. Er wird nur einmal angezeigt und ist zusammen mit deinem Namen dein
             Login auf jedem weiteren Gerät.
@@ -88,12 +91,14 @@ export function Gate() {
 
   return (
     <div className="gate">
-      <div className="card gate__card fade-in">
+      <div className="card gate__card fade-in" {...spotlight}>
         <div className="gate__mark">
-          <Mark size={30} />
+          <Mark size={34} />
         </div>
 
-        <h1 style={{ fontSize: "1.8rem" }}>Maiausfluginator</h1>
+        <h1 className="display" style={{ fontSize: "1.9rem" }}>
+          Maiausfluginator
+        </h1>
         <p className="muted" style={{ marginTop: 10 }}>
           Die Bewertungszentrale unserer Mai-Ausflüge. Zutritt nur mit Einladung.
         </p>

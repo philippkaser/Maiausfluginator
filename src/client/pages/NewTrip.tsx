@@ -94,9 +94,10 @@ export function NewTrip() {
 
   return (
     <div className="stack stack--lg fade-in">
-      <div>
-        <h1>Ausflug eintragen</h1>
-        <p className="lead" style={{ marginTop: 10 }}>
+      <div className="hero">
+        <span className="eyebrow">Neuer Eintrag</span>
+        <h1 className="display hero__title">Ausflug eintragen</h1>
+        <p className="lead" style={{ marginTop: 14 }}>
           Lokal und Datum genügen. Entfernung und Fahrzeit ab {hq.label} rechnet der Maiausfluginator
           aus den Koordinaten – wenn du es genauer weißt, trag die echten Werte ein.
         </p>

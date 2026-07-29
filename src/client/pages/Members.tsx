@@ -32,7 +32,12 @@ export function Members() {
   return (
     <div className="stack stack--lg fade-in">
       <div className="pagehead">
-<h1>Mitglieder</h1>
+        <div>
+          <span className="eyebrow">Die Runde</span>
+          <h1 className="display" style={{ marginTop: 12 }}>
+            Mitglieder
+          </h1>
+        </div>
         <button type="button" className="btn btn--sm" onClick={rotate}>
           Meinen Schlüssel erneuern
         </button>

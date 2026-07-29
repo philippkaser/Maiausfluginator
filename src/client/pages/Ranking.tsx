@@ -9,7 +9,7 @@ import type { Stats, Trip } from "../../shared/types.ts";
 import { Radar } from "../components/Radar.tsx";
 import { TripRow } from "../components/TripRow.tsx";
 import { WeightTuner } from "../components/WeightTuner.tsx";
-import { Empty, Segmented, Spinner } from "../components/ui.tsx";
+import { Empty, Segmented, Spinner, useSpotlight } from "../components/ui.tsx";
 
 type SortMode = "score" | "date" | "distance" | "wait";
 
@@ -24,6 +24,7 @@ export function Ranking() {
   const { me, hq } = useSession();
   const toast = useToast();
   const { weights, setWeights, presetId, setPresetId } = useStoredWeights();
+  const spotlight = useSpotlight();
 
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -77,20 +78,21 @@ export function Ranking() {
 
   return (
     <div className="stack stack--lg fade-in">
-      <header className="stack" style={{ gap: 22 }}>
+      <header className="stack hero" style={{ gap: 24 }}>
         <div>
-          <h1>Mai-Ausflüge {new Date().getFullYear()}</h1>
-          <p className="lead" style={{ marginTop: 10 }}>
+          <span className="eyebrow">Saison {new Date().getFullYear()}</span>
+          <h1 className="display hero__title">Mai-Ausflüge</h1>
+          <p className="lead" style={{ marginTop: 14 }}>
             Jedes Lokal bekommt einen Mai-Score aus sieben Komponenten — fünf davon bewertet ihr
             selbst, dazu die Wartezeit aufs Essen und die Anfahrt ab {hq.label}.
             {unrated > 0 && me ? ` Bei dir fehlen noch ${unrated} Bewertungen.` : ""}
           </p>
-          <div className="row" style={{ marginTop: 18 }}>
-            <Link to="/neu" className="btn btn--primary">
+          <div className="row" style={{ marginTop: 22 }}>
+            <Link to="/neu" className="btn btn--primary btn--lg">
               Ausflug eintragen
             </Link>
             {unrated > 0 && (
-              <button type="button" className="btn" onClick={() => setOnlyOpen(true)}>
+              <button type="button" className="btn btn--lg" onClick={() => setOnlyOpen(true)}>
                 {unrated} offen
               </button>
             )}
@@ -120,7 +122,7 @@ export function Ranking() {
               <div className="stat__label">unterwegs</div>
             </div>
             <div className="stat">
-              <div className="stat__value">
+              <div className="stat__value stat__value--accent">
                 {leaderScore === null ? "–" : formatDecimal(leaderScore)}
               </div>
               <div className="stat__label">Bestwert</div>
@@ -146,9 +148,6 @@ export function Ranking() {
               className="btn btn--sm"
               aria-pressed={onlyOpen}
               onClick={() => setOnlyOpen((value) => !value)}
-              style={
-                onlyOpen ? { background: "var(--accent-dim)", color: "var(--accent-hi)" } : undefined
-              }
             >
               Nur offene
             </button>
@@ -194,7 +193,7 @@ export function Ranking() {
             <div className="awards">
               {stats?.awards.map((award) =>
                 award.tripId ? (
-                  <Link key={award.key} to={`/ausflug/${award.tripId}`} className="award">
+                  <Link key={award.key} to={`/ausflug/${award.tripId}`} className="award" {...spotlight}>
                     <span className="award__title">{award.title}</span>
                     <span className="award__value">{award.tripTitle}</span>
                     <span className="award__meta">

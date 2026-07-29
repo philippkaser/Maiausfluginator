@@ -1,9 +1,45 @@
-import { useEffect, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { initials } from "../lib/format.ts";
 import { de1 } from "../../shared/num.ts";
 
 /* ------------------------------------------------------------------ */
-/* Icons — hairline strokes, no fills.                                  */
+/* Light                                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Glass only looks like glass when the light moves on it. These handlers put
+ * the pointer position on the element as --mx/--my; the highlight itself is a
+ * radial gradient in CSS, so nothing renders in React while the mouse moves.
+ */
+export function useSpotlight() {
+  return useMemo(
+    () => ({
+      onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
+        const element = event.currentTarget;
+        const box = element.getBoundingClientRect();
+        element.style.setProperty("--mx", `${event.clientX - box.left}px`);
+        element.style.setProperty("--my", `${event.clientY - box.top}px`);
+        element.dataset.spot = "on";
+      },
+      onPointerLeave: (event: ReactPointerEvent<HTMLElement>) => {
+        event.currentTarget.dataset.spot = "off";
+      },
+    }),
+    [],
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Icons                                                                */
 /* ------------------------------------------------------------------ */
 
 export function Chevron({ size = 10 }: { size?: number }) {
@@ -21,8 +57,12 @@ export function Chevron({ size = 10 }: { size?: number }) {
   );
 }
 
-/** The mark: an isometric cube, drawn in one weight. */
+/**
+ * The mark: an isometric cube whose three faces catch the light differently —
+ * the top lit by the spring gradient, the sides falling away into the ground.
+ */
 export function Mark({ size = 26 }: { size?: number }) {
+  const id = useId();
   return (
     <svg
       className="brand__mark"
@@ -33,13 +73,30 @@ export function Mark({ size = 26 }: { size?: number }) {
       aria-hidden="true"
       style={{ width: size, height: size }}
     >
+      <defs>
+        <linearGradient id={`${id}-top`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#d8f78c" />
+          <stop offset="100%" stopColor="#6fe6c4" />
+        </linearGradient>
+        <linearGradient id={`${id}-left`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#6fe6c4" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#6fe6c4" stopOpacity="0.12" />
+        </linearGradient>
+        <linearGradient id={`${id}-right`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.34" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.06" />
+        </linearGradient>
+      </defs>
+
+      <path d="M12 2.4 21.2 7.6 12 12.8 2.8 7.6z" fill={`url(#${id}-top)`} />
+      <path d="M2.8 7.6 12 12.8v8.8L2.8 16.4z" fill={`url(#${id}-left)`} />
+      <path d="M21.2 7.6 12 12.8v8.8l9.2-5.2z" fill={`url(#${id}-right)`} />
       <path
-        d="M12 2.6 21 7.7v8.6L12 21.4 3 16.3V7.7z"
-        stroke="currentColor"
-        strokeWidth="1.4"
+        d="M12 2.4 21.2 7.6v8.8L12 21.6l-9.2-5.2V7.6z"
+        stroke="rgba(255,255,255,0.34)"
+        strokeWidth="0.8"
         strokeLinejoin="round"
       />
-      <path d="M3 7.7 12 12.8l9-5.1M12 12.8v8.6" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -70,16 +127,17 @@ export function Avatar({
 }
 
 /**
- * One colour for every score. Grading the bars green/amber/blue turned the
- * ranking into a traffic light — the length already says who won.
+ * One colour for every score. Grading the bars green/amber/red turned the
+ * ranking into a traffic light — the length already says who won. Rated things
+ * carry the spring gradient; unrated ones stay grey.
  */
 export function toneColor(score: number | null): string {
-  return score === null ? "rgba(255,255,255,0.22)" : "var(--accent)";
+  return score === null ? "rgba(255,255,255,0.2)" : "var(--accent)";
 }
 
 /**
  * A three-quarter gauge. SVG rather than a conic-gradient so the caps stay
- * round and the centre stays free for the number.
+ * round, the sweep can be animated, and the centre stays free for the number.
  */
 export function ScoreRing({
   score,
@@ -90,7 +148,8 @@ export function ScoreRing({
   size?: number;
   label?: string;
 }) {
-  const stroke = Math.max(4, size * 0.055);
+  const id = useId();
+  const stroke = Math.max(4, size * 0.058);
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const sweep = 0.75; // the bottom quarter stays open
@@ -106,32 +165,42 @@ export function ScoreRing({
       }
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="ring__svg">
+        <defs>
+          {/* Rotated with the ring, so the gradient runs along the arc rather
+              than across the box. */}
+          <linearGradient id={`${id}-arc`} x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stopColor="#7ce9c8" />
+            <stop offset="55%" stopColor="#a9ee9b" />
+            <stop offset="100%" stopColor="#cbf172" />
+          </linearGradient>
+        </defs>
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
+          stroke="rgba(255,255,255,0.08)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${circumference * sweep} ${circumference}`}
         />
         <circle
+          className="ring__arc"
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={toneColor(score)}
+          stroke={score === null ? "rgba(255,255,255,0.16)" : `url(#${id}-arc)`}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${circumference * sweep * pct} ${circumference}`}
         />
       </svg>
       <span className="ring__inner">
-        <span className="ring__value" style={{ fontSize: size * 0.26 }}>
+        <span className="ring__value" style={{ fontSize: size * 0.27 }}>
           {score === null ? "–" : score >= 100 ? "100" : de1(score)}
         </span>
-        <span className="ring__unit" style={{ fontSize: Math.max(9, size * 0.105) }}>
+        <span className="ring__unit" style={{ fontSize: Math.max(9, size * 0.1) }}>
           {score === null ? "offen" : "Punkte"}
         </span>
       </span>
@@ -192,7 +261,11 @@ export function Tag({
   );
 }
 
-/** iOS-style segmented control. */
+/**
+ * Segmented control. The lit pill is a single element that slides between the
+ * options instead of a background switching on and off — measured rather than
+ * assumed equal, so labels can be any length.
+ */
 export function Segmented<T extends string>({
   value,
   options,
@@ -204,8 +277,37 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void;
   label?: string;
 }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = useState<{ x: number; width: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    const measure = () => {
+      const active = track.querySelector<HTMLElement>('[aria-pressed="true"]');
+      setThumb(active ? { x: active.offsetLeft, width: active.offsetWidth } : null);
+    };
+
+    measure();
+    // Labels reflow with the font and the container; keep the pill on them.
+    const observer = new ResizeObserver(measure);
+    observer.observe(track);
+    for (const child of Array.from(track.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [value, options]);
+
   return (
-    <div className="segmented" role="group" aria-label={label}>
+    <div className="segmented" role="group" aria-label={label} ref={trackRef}>
+      <span
+        className="segmented__thumb"
+        data-ready={thumb !== null}
+        aria-hidden="true"
+        style={{
+          ["--thumb-x" as string]: `${thumb?.x ?? 0}px`,
+          ["--thumb-w" as string]: `${thumb?.width ?? 0}px`,
+        }}
+      />
       {options.map((option) => (
         <button
           key={option.value}
