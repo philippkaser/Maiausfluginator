@@ -30,7 +30,7 @@ export function Members() {
   }
 
   return (
-    <div className="stack stack--lg fade-in">
+    <div className="stack stack--lg">
       <div className="pagehead">
 <h1>Mitglieder</h1>
         <button type="button" className="btn btn--sm" onClick={rotate}>

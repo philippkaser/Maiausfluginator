@@ -58,7 +58,7 @@ export function Admin() {
   const used = invites?.filter((invite) => invite.usedAt !== null) ?? [];
 
   return (
-    <div className="stack stack--lg fade-in">
+    <div className="stack stack--lg">
       <div>
         <h1>Einladungen</h1>
         <p className="lead" style={{ marginTop: 10 }}>

@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { api, ApiError } from "../lib/api.ts";
 import { useSession, useToast } from "../lib/store.tsx";
+import type { Me } from "../../shared/types.ts";
 import { Field, Mark, Segmented } from "../components/ui.tsx";
 
 type Mode = "login" | "redeem";
@@ -13,7 +14,7 @@ export function Gate() {
   const [mode, setMode] = useState<Mode>(needsBootstrap ? "redeem" : "login");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [freshKey, setFreshKey] = useState<{ key: string; handle: string } | null>(null);
+  const [freshKey, setFreshKey] = useState<{ key: string; handle: string; me: Me } | null>(null);
 
   const [code, setCode] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -27,8 +28,10 @@ export function Gate() {
     try {
       if (mode === "redeem") {
         const result = await api.redeem(code, displayName);
-        setFreshKey({ key: result.personalKey, handle: result.me.handle });
-        setMe(result.me);
+        // The session cookie is already set, so `me` is deliberately left
+        // alone until the key is dismissed — publishing it here would swap
+        // the Gate out for the app and the key would never be shown at all.
+        setFreshKey({ key: result.personalKey, handle: result.me.handle, me: result.me });
       } else {
         const result = await api.login(handle, personalKey);
         setMe(result.me);
@@ -45,7 +48,7 @@ export function Gate() {
   if (freshKey) {
     return (
       <div className="gate">
-        <div className="card gate__card fade-in">
+        <div className="card gate__card glass--rim">
           <div className="gate__mark">
             <Mark size={30} />
           </div>
@@ -77,7 +80,7 @@ export function Gate() {
             >
               Kopieren
             </button>
-            <button type="button" className="btn btn--primary" onClick={() => setFreshKey(null)}>
+            <button type="button" className="btn btn--primary" onClick={() => setMe(freshKey.me)}>
               Habe ich notiert
             </button>
           </div>
@@ -88,7 +91,7 @@ export function Gate() {
 
   return (
     <div className="gate">
-      <div className="card gate__card fade-in">
+      <div className="card gate__card glass--rim">
         <div className="gate__mark">
           <Mark size={30} />
         </div>

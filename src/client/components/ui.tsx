@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { initials } from "../lib/format.ts";
 import { de1 } from "../../shared/num.ts";
 
@@ -74,12 +74,15 @@ export function Avatar({
  * ranking into a traffic light — the length already says who won.
  */
 export function toneColor(score: number | null): string {
-  return score === null ? "rgba(255,255,255,0.22)" : "var(--accent)";
+  return score === null ? "rgba(23,40,88,0.2)" : "var(--accent)";
 }
 
 /**
  * A three-quarter gauge. SVG rather than a conic-gradient so the caps stay
  * round and the centre stays free for the number.
+ *
+ * The arc grows from empty on mount: the dash length is a transitioned
+ * property, so a single re-render one frame later animates it.
  */
 export function ScoreRing({
   score,
@@ -96,6 +99,15 @@ export function ScoreRing({
   const sweep = 0.75; // the bottom quarter stays open
   const pct = score === null ? 0 : Math.max(0, Math.min(100, score)) / 100;
 
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setArmed(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  // useId ships delimiters that are not safe inside a url(#…) reference.
+  const gradientId = `ring-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+
   return (
     <div
       className="ring"
@@ -106,25 +118,32 @@ export function ScoreRing({
       }
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="ring__svg">
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="var(--accent-hi)" />
+            <stop offset="100%" stopColor="var(--accent)" />
+          </linearGradient>
+        </defs>
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
+          stroke="rgba(23,40,88,0.1)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${circumference * sweep} ${circumference}`}
         />
         <circle
+          className="ring__arc"
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={toneColor(score)}
+          stroke={score === null ? toneColor(null) : `url(#${gradientId})`}
           strokeWidth={stroke}
           strokeLinecap="round"
-          strokeDasharray={`${circumference * sweep * pct} ${circumference}`}
+          strokeDasharray={`${armed ? circumference * sweep * pct : 0} ${circumference}`}
         />
       </svg>
       <span className="ring__inner">
@@ -215,7 +234,7 @@ export function Segmented<T extends string>({
           title={option.title}
           onClick={() => onChange(option.value)}
         >
-          {option.label}
+          <span>{option.label}</span>
         </button>
       ))}
     </div>
@@ -274,7 +293,7 @@ export function Modal({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="card modal" style={wide ? { width: "min(880px, 100%)" } : undefined}>
+      <div className="card glass--rim modal" style={wide ? { width: "min(880px, 100%)" } : undefined}>
         <div className="row row--between" style={{ marginBottom: 16 }}>
           <h2>{title}</h2>
           <button type="button" className="btn btn--quiet btn--sm" onClick={onClose}>

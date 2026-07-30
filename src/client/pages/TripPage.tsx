@@ -81,7 +81,7 @@ export function TripPage({ tripId }: { tripId: string }) {
   }
 
   return (
-    <div className="stack stack--lg fade-in">
+    <div className="stack stack--lg">
       <div className="row row--between">
         <Link to="/" className="btn btn--quiet btn--sm">
           ← Rangliste
@@ -93,9 +93,12 @@ export function TripPage({ tripId }: { tripId: string }) {
         )}
       </div>
 
-      <header className="row row--between" style={{ alignItems: "flex-start", gap: 28 }}>
+      <header
+        className="card card--pad glass--rim row row--between"
+        style={{ alignItems: "flex-start", gap: 28 }}
+      >
         <div style={{ minWidth: 0, flex: "1 1 340px" }}>
-          <p className="small dim" style={{ marginBottom: 6 }}>
+          <p className="eyebrow" style={{ marginBottom: 8 }}>
             {formatWeekday(trip.tripDate)}, {formatDate(trip.tripDate)}
           </p>
           <h1>{restaurant.name}</h1>
@@ -123,7 +126,7 @@ export function TripPage({ tripId }: { tripId: string }) {
             )}
           </div>
 
-          {trip.notes && <p style={{ marginTop: 18, color: "var(--label-2)" }}>{trip.notes}</p>}
+          {trip.notes && <p style={{ marginTop: 18, color: "var(--ink-2)" }}>{trip.notes}</p>}
 
           <p className="small dim" style={{ marginTop: 16 }}>
             Eingetragen von {trip.createdByName} · {formatRelative(trip.createdAt)}

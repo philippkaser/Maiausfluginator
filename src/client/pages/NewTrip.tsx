@@ -93,7 +93,7 @@ export function NewTrip() {
   }
 
   return (
-    <div className="stack stack--lg fade-in">
+    <div className="stack stack--lg">
       <div>
         <h1>Ausflug eintragen</h1>
         <p className="lead" style={{ marginTop: 10 }}>

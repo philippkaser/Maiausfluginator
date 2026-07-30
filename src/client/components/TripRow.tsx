@@ -9,7 +9,17 @@ import { Chevron, toneColor } from "./ui.tsx";
  * One line of the ranking. The secondary line carries everything that used to
  * be a row of badges — it reads faster and leaves the eye a single anchor.
  */
-export function TripRow({ trip, rank, weights }: { trip: Trip; rank: number; weights: Weights }) {
+export function TripRow({
+  trip,
+  rank,
+  weights,
+  index = 0,
+}: {
+  trip: Trip;
+  rank: number;
+  weights: Weights;
+  index?: number;
+}) {
   const { score } = scoreTrip(trip.aggregate, weights);
   const { aggregate: agg, restaurant } = trip;
 
@@ -25,6 +35,9 @@ export function TripRow({ trip, rank, weights }: { trip: Trip; rank: number; wei
     <Link
       to={`/ausflug/${trip.id}`}
       className={`list__row${rank <= 3 ? " list__row--podium" : ""}`}
+      // Rows further down the list arrive a beat later. Capped so a long
+      // ranking does not keep animating well after the eye has moved on.
+      style={{ ["--i" as string]: Math.min(index, 12) }}
     >
       <span className="list__rank">{rank}</span>
 

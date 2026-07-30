@@ -36,7 +36,7 @@ export function Radar({
           score,
           x: 150 + Math.cos(angle) * radius,
           y: 150 + Math.sin(angle) * radius,
-          color: score === null ? "rgba(255,255,255,0.26)" : "#0a84ff",
+          color: score === null ? "rgba(23,40,88,0.28)" : "#5468ff",
           size: 5 + Math.min(9, trip.aggregate.ratingCount * 1.6),
         };
       }),
@@ -49,8 +49,9 @@ export function Radar({
     <svg className="radar" viewBox="0 0 300 300" role="img" aria-label="Ausflugsziele nach Richtung und Entfernung ab HQ">
       <defs>
         <radialGradient id="radar-glow" cx="50%" cy="50%">
-          <stop offset="0%" stopColor="rgba(10,132,255,0.1)" />
-          <stop offset="100%" stopColor="rgba(10,132,255,0)" />
+          <stop offset="0%" stopColor="rgba(84,104,255,0.14)" />
+          <stop offset="60%" stopColor="rgba(84,104,255,0.05)" />
+          <stop offset="100%" stopColor="rgba(84,104,255,0)" />
         </radialGradient>
       </defs>
 
@@ -63,7 +64,7 @@ export function Radar({
           cy="150"
           r={128 * ring}
           fill="none"
-          stroke="rgba(255,255,255,0.09)"
+          stroke="rgba(23,40,88,0.12)"
           strokeDasharray={ring === 1 ? undefined : "3 5"}
         />
       ))}
@@ -77,7 +78,8 @@ export function Radar({
             y={150 + Math.sin(angle) * 143 + 4}
             textAnchor="middle"
             fontSize="10"
-            fill="rgba(235,235,245,0.36)"
+            fontWeight="600"
+            fill="rgba(23,27,42,0.42)"
             letterSpacing="0.1em"
           >
             {label}
@@ -92,7 +94,7 @@ export function Radar({
           y={150 - 128 * ring + 11}
           textAnchor="end"
           fontSize="8.5"
-          fill="rgba(235,235,245,0.28)"
+          fill="rgba(23,27,42,0.32)"
           fontVariant="tabular-nums"
         >
           {Math.round(maxKm * ring * ring)} km
@@ -100,17 +102,17 @@ export function Radar({
       ))}
 
       {/* HQ marker */}
-      <circle cx="150" cy="150" r="4.5" fill="#fff" />
-      <circle cx="150" cy="150" r="9" fill="none" stroke="rgba(255,255,255,0.3)" />
-      <text x="150" y="172" textAnchor="middle" fontSize="9" fill="rgba(235,235,245,0.5)">
+      <circle cx="150" cy="150" r="4.5" fill="#3546c9" />
+      <circle cx="150" cy="150" r="9" fill="none" stroke="rgba(53,70,201,0.32)" />
+      <text x="150" y="173" textAnchor="middle" fontSize="9" fontWeight="600" fill="rgba(23,27,42,0.5)">
         {hqLabel}
       </text>
 
       {points.map(({ trip, x, y, color, size, score }) => (
         <g
           key={trip.id}
+          className="radar__blip"
           onClick={() => navigate(`/ausflug/${trip.id}`)}
-          style={{ cursor: "pointer" }}
           tabIndex={0}
           role="link"
           aria-label={`${trip.restaurant.name}, ${de1(trip.restaurant.distanceKm)} km`}
@@ -123,9 +125,9 @@ export function Radar({
               score === null ? "unbewertet" : `${de1(score)} Punkte`
             }`}
           </title>
-          <line x1="150" y1="150" x2={x} y2={y} stroke={color} strokeOpacity="0.2" />
-          <circle cx={x} cy={y} r={size} fill={color} fillOpacity="0.2" />
-          <circle cx={x} cy={y} r={size / 2.4} fill={color} />
+          <line x1="150" y1="150" x2={x} y2={y} stroke={color} strokeOpacity="0.24" />
+          <circle cx={x} cy={y} r={size} fill={color} fillOpacity="0.18" />
+          <circle cx={x} cy={y} r={size / 2.4} fill={color} stroke="#fff" strokeWidth="1.2" />
         </g>
       ))}
     </svg>

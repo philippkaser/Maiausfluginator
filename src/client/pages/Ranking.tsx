@@ -76,16 +76,19 @@ export function Ranking() {
   const leaderScore = leader ? scoreTrip(leader.aggregate, weights).score : null;
 
   return (
-    <div className="stack stack--lg fade-in">
-      <header className="stack" style={{ gap: 22 }}>
+    <div className="stack stack--lg">
+      <header className="stack" style={{ gap: 24 }}>
         <div>
+          <p className="eyebrow" style={{ marginBottom: 10 }}>
+            Durst Brixen
+          </p>
           <h1>Mai-Ausflüge {new Date().getFullYear()}</h1>
-          <p className="lead" style={{ marginTop: 10 }}>
+          <p className="lead" style={{ marginTop: 12 }}>
             Jedes Lokal bekommt einen Mai-Score aus sieben Komponenten — fünf davon bewertet ihr
             selbst, dazu die Wartezeit aufs Essen und die Anfahrt ab {hq.label}.
             {unrated > 0 && me ? ` Bei dir fehlen noch ${unrated} Bewertungen.` : ""}
           </p>
-          <div className="row" style={{ marginTop: 18 }}>
+          <div className="row" style={{ marginTop: 22 }}>
             <Link to="/neu" className="btn btn--primary">
               Ausflug eintragen
             </Link>
@@ -98,7 +101,7 @@ export function Ranking() {
         </div>
 
         {stats && (
-          <div className="stats">
+          <div className="stats card glass--rim">
             <div className="stat">
               <div className="stat__value">{stats.tripCount}</div>
               <div className="stat__label">Ausflüge</div>
@@ -146,9 +149,6 @@ export function Ranking() {
               className="btn btn--sm"
               aria-pressed={onlyOpen}
               onClick={() => setOnlyOpen((value) => !value)}
-              style={
-                onlyOpen ? { background: "var(--accent-dim)", color: "var(--accent-hi)" } : undefined
-              }
             >
               Nur offene
             </button>
@@ -175,10 +175,16 @@ export function Ranking() {
             </Empty>
           </div>
         ) : (
-          <div className="card card--flush">
+          <div className="card card--flush glass--rim">
             <div className="list">
               {visible.map((trip, index) => (
-                <TripRow key={trip.id} trip={trip} rank={index + 1} weights={weights} />
+                <TripRow
+                  key={trip.id}
+                  trip={trip}
+                  rank={index + 1}
+                  index={index}
+                  weights={weights}
+                />
               ))}
             </div>
           </div>
@@ -191,7 +197,7 @@ export function Ranking() {
             <div className="section__head">
               <h2>Rekorde der Saison</h2>
             </div>
-            <div className="awards">
+            <div className="awards card">
               {stats?.awards.map((award) =>
                 award.tripId ? (
                   <Link key={award.key} to={`/ausflug/${award.tripId}`} className="award">

@@ -36,8 +36,8 @@ export function WeightTuner({
   if (!activePreset) options.push({ value: "eigen", label: "Eigen", title: "Deine Regler" });
 
   return (
-    <section className="card card--pad">
-      <div className="section__head" style={{ marginBottom: 12 }}>
+    <section className="card card--pad glass--rim">
+      <div className="section__head" style={{ marginBottom: 14 }}>
         <div>
           <h2>Gewichtung</h2>
           <p className="small dim" style={{ marginTop: 4 }}>
@@ -65,9 +65,10 @@ export function WeightTuner({
         }}
       />
 
-      {open && (
-        <>
-          <hr className="divider" style={{ margin: "18px 0 16px" }} />
+      {/* Kept mounted and collapsed to 0fr so opening and closing both slide. */}
+      <div className="drawer" data-open={open} aria-hidden={!open}>
+        <div className="drawer__inner">
+          <hr className="divider" style={{ margin: "20px 0 18px" }} />
           <div className="sliders">
             {COMPONENTS.map((key) => (
               <label key={key} className="field" style={{ gap: 2 }}>
@@ -81,6 +82,7 @@ export function WeightTuner({
                   max={50}
                   step={1}
                   value={weights[key]}
+                  tabIndex={open ? undefined : -1}
                   style={{ ["--fill" as string]: `${(weights[key] / 50) * 100}%` }}
                   onChange={(event) => {
                     onPreset("eigen");
@@ -91,12 +93,12 @@ export function WeightTuner({
               </label>
             ))}
           </div>
-          <p className="small dim" style={{ marginTop: 14 }}>
+          <p className="small dim" style={{ marginTop: 16 }}>
             Komponenten ohne Daten werden übersprungen und die übrigen Gewichte entsprechend
             hochgerechnet.
           </p>
-        </>
-      )}
+        </div>
+      </div>
     </section>
   );
 }

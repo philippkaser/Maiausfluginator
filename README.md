@@ -140,16 +140,32 @@ bun run typecheck
 
 ## Aussehen
 
-Dunkel, zurückhaltend, typografisch. Es gibt **eine** Akzentfarbe (`--accent`), Trennung passiert
-über Haarlinien, Tiefe über Unschärfe und Kontrast statt über Leuchten. Die Rangliste ist eine
-gruppierte Liste mit Trennlinien, keine Sammlung schwebender Kacheln; Sortierung und Presets
-laufen über Segmented Controls. Alle Tokens stehen oben in `styles.css` — wer die Akzentfarbe
-ändern will, ändert eine Zeile.
+Hell, luftig, typografisch. Jede Fläche ist eine Scheibe Milchglas über einem weichen
+Aurora-Grund. Es gibt **eine** Akzentfarbe (`--accent`), Trennung passiert über Haarlinien,
+Tiefe über Unschärfe, Kantenlicht und Schatten. Die Rangliste ist eine gruppierte Liste mit
+Trennlinien, keine Sammlung schwebender Kacheln; Sortierung und Presets laufen über Segmented
+Controls. Alle Tokens stehen oben in `styles.css` — wer die Akzentfarbe ändern will, ändert eine
+Zeile.
+
+Vier Dinge machen aus einem grauen Kasten Glas, alle in `.card` / `.glass`:
+
+1. `backdrop-filter` mit Blur und Sättigung,
+2. ein Verlauf im Körper, heller dort, wo das Licht herkommt,
+3. eine belichtete Oberkante plus schwacher Rückwurf von unten (`--lip`),
+4. `::before` als gebrochener Rand, `::after` als Glanzlicht.
+
+Der Rand ist echte Brechung: ein SVG-Filter (`feTurbulence` → `feDisplacementMap`, in
+`Backdrop.tsx`) verzerrt über `backdrop-filter: url(#glass-warp)`, was hinter der Fläche liegt,
+und eine Maske schneidet das auf ein Band an der Kante zu — genau dort, wo eine echte Scheibe
+das Licht bricht. Browser, die keine Filter-Referenz in `backdrop-filter` annehmen, werfen die
+Deklaration weg und bekommen eine saubere Mattscheibe; nichts davon ist tragend. Das Glanzlicht
+folgt dem Zeiger: ein einzelner delegierter `pointermove`-Listener (`lib/glass.ts`) schreibt
+`--gx` / `--gy` / `--gl` auf die Fläche darunter, einmal pro Frame, und nur bei echtem Hover.
 
 Der Hintergrund ist ein isometrisches Voxel-Feld auf einem Canvas, formatfüllend über den
 ganzen Viewport: die Höhen kommen aus ein paar überlagerten Sinuswellen und werden auf acht
-Stufen gerundet, damit es nach Würfeln aussieht und nicht nach Düne. Fast monochrom und bei
-34 % Deckkraft — es ist Textur im Raum, nicht das Thema der Seite.
+Stufen gerundet, damit es nach Würfeln aussieht und nicht nach Düne. Fast monochrom und blass —
+es ist Relief im Raum, nicht das Thema der Seite, und es ist das, was das Glas darüber bricht.
 
 Das Feld ist unbegrenzt: statt einen festen Block Würfel zu legen und zu hoffen, dass er reicht,
 wird die isometrische Projektion invertiert, um genau die Gitterzellen zu bestimmen, die im
@@ -158,3 +174,9 @@ danebenliegt. Die Kachelgröße skaliert mit dem Viewport und hat ein hartes Wü
 Bremse — gemessen ist das Zeichnen geometrie- und nicht füllratenlimitiert, die Anzahl der
 Würfel ist also der einzige Hebel, der zählt. Läuft mit 30 fps, pausiert im Hintergrund-Tab und
 steht still, wenn das System `prefers-reduced-motion` meldet.
+
+Bewegung läuft durchgehend über zwei Kurven (`--ease`, `--ease-spring`) und drei Dauern: Seiten
+steigen beim Wechsel auf, Ranglistenzeilen kommen gestaffelt (gedeckelt, damit eine lange Liste
+nicht noch animiert, wenn das Auge längst weiter ist), der Score-Ring wächst aus dem Nichts, der
+Reglerschub fährt über `grid-template-rows: 0fr → 1fr` auf und wieder zu. Wer
+`prefers-reduced-motion` gesetzt hat, bekommt alles davon sofort und ohne Weg.

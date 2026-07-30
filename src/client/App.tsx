@@ -23,7 +23,7 @@ function Topbar() {
 
   return (
     <header className="topbar">
-      <div className="topbar__inner">
+      <div className="topbar__inner glass glass--rim">
         <Link to="/" className="brand">
           <Mark />
           <span className="brand__title">Maiausfluginator</span>
@@ -39,7 +39,7 @@ function Topbar() {
                 link.to === "/" ? (path === "/" ? "page" : undefined) : path.startsWith(link.to) ? "page" : undefined
               }
             >
-              {link.label}
+              <span>{link.label}</span>
             </Link>
           ))}
         </nav>
@@ -99,6 +99,10 @@ function Routes() {
 
 export function App() {
   const { me, loading } = useSession();
+  const { path } = useRouter();
+  // Trip pages share one key: moving between two of them should feel like the
+  // same screen updating, not a whole new page sliding in.
+  const pageKey = path.startsWith("/ausflug/") ? "/ausflug" : path;
 
   return (
     <>
@@ -112,7 +116,8 @@ export function App() {
       ) : (
         <>
           <Topbar />
-          <main className="shell">
+          {/* Keyed on the route so the enter animation replays on every screen. */}
+          <main className="shell page" key={pageKey}>
             <Routes />
           </main>
         </>
