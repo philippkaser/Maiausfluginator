@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useFocusTrap, useScrollLock } from "../lib/a11y.ts";
 import { api, ApiError, photoUrl } from "../lib/api.ts";
@@ -233,6 +234,10 @@ export function PhotoPanel({
  * The lightbox. The same keyboard contract as a sheet — focus in, trapped,
  * handed back — but the frame here is the photograph itself rather than a pane,
  * so it is not one. Arrow keys walk the gallery, which a sheet has no notion of.
+ *
+ * Portalled into <body> for the same reason a sheet is: it lives inside a
+ * `.pane`, whose backdrop-filter would otherwise make that pane the containing
+ * block for its `position: fixed` — a full-screen overlay bound to a card.
  */
 function Lightbox({
   photo,
@@ -274,7 +279,7 @@ function Lightbox({
     return () => document.removeEventListener("keydown", onKey);
   }, [photo, photos, onShow, onClose]);
 
-  return (
+  return createPortal(
     <div
       className="lightbox"
       role="dialog"
@@ -317,6 +322,7 @@ function Lightbox({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

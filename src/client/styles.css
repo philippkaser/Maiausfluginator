@@ -320,6 +320,27 @@ a.link:hover {
 }
 
 /* --------------------------------------------------------------------------
+   The stack
+
+   Every fixed layer in the app, bottom to top. Worth having in one place because
+   the values live in five different sections and a clash only shows up as
+   something invisible:
+
+     -1   .ground     the aurora, behind everything
+     60   .rail       the top bar, and .dock on narrow screens
+     90   .scrim      the dimmed page behind a sheet
+     91   .sheet      the sheet itself
+    130   .lightbox   a photograph, full screen
+    200   .skip       the skip link, only ever visible while focused
+    210   .toasts     notifications, above everything — including whatever
+                      raised them
+
+   `.sheet` and `.lightbox` are portalled into <body> rather than rendered where
+   they are opened; see the comment in `components/Sheet.tsx` for why that is
+   required and not merely tidy.
+   -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
    Grund — the aurora
 
    A shader canvas pinned behind everything, plus two static washes that are
@@ -1489,7 +1510,11 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 
 .toasts {
   position: fixed;
-  z-index: 120;
+  /* The top of the stack, above the lightbox. A toast is how the app admits
+     something failed — "das Like ging verloren" is raised from inside the photo
+     viewer, and at z-index 120 it was hidden behind the very layer that caused
+     it. */
+  z-index: 210;
   bottom: 22px;
   left: 50%;
   transform: translateX(-50%);

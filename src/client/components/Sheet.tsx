@@ -12,9 +12,21 @@
  * focus moves in and comes back out to where it was, Tab cannot leave, Escape
  * closes, the page behind cannot scroll, and the exit is animated rather than
  * cut (a sheet that vanishes instantly feels like an error, not a dismissal).
+ *
+ * It renders through a portal into <body>, and that is load-bearing rather than
+ * tidiness. `position: fixed` is only fixed to the viewport while no ancestor
+ * establishes a containing block — and a transform, a filter, a backdrop-filter
+ * or `contain` all do. This app is full of them: `.page-enter` animates a
+ * transform on <main>, every `.pane` and `.frost` carries a backdrop-filter, and
+ * a section mid-reveal is translated. A sheet opened from inside a page would
+ * therefore size itself against that ancestor instead of the screen — tall as
+ * the whole document, with its footer below the fold and nothing able to
+ * scroll. Portalling puts every sheet in the same place regardless of who opened
+ * it, which is also why they now all behave identically.
  */
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { useFocusTrap, useScrollLock } from "../lib/a11y.ts";
 import { prefersReducedMotion } from "../lib/shader.ts";
@@ -74,7 +86,7 @@ export function Sheet({
     .filter(Boolean)
     .join(" ");
 
-  return (
+  const sheet = (
     <>
       <div
         className={closing ? "scrim scrim--closing" : "scrim"}
@@ -112,4 +124,6 @@ export function Sheet({
       </div>
     </>
   );
+
+  return createPortal(sheet, document.body);
 }
