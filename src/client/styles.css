@@ -73,6 +73,7 @@
   --accent: #1c5c47;
   --accent-bright: #247459;
   --accent-soft: rgba(28, 92, 71, 0.1);
+  --accent-soft-hi: rgba(28, 92, 71, 0.17);
   --accent-line: rgba(28, 92, 71, 0.28);
 
   /* Copper. Strictly secondary: it marks the exceptional (a podium, an award,
@@ -865,7 +866,13 @@ a.link:hover {
    -------------------------------------------------------------------------- */
 
 .btn {
+  /* Resting and hover backgrounds are BOTH variables, and that is not a style
+     preference — it is the only arrangement that works. If `:hover` set
+     `background` directly it would out-specify `.btn`'s `background:
+     var(--btn-bg)`, every variant's override would be ignored on hover, and a
+     pine primary button would turn white while keeping its near-white label. */
   --btn-bg: var(--glass-raised);
+  --btn-bg-hover: var(--glass-solid);
   --btn-fg: var(--ink);
   position: relative;
   display: inline-flex;
@@ -898,7 +905,7 @@ a.link:hover {
 }
 
 .btn:hover {
-  background: var(--glass-solid);
+  background: var(--btn-bg-hover);
   box-shadow:
     inset 0 0 0 1px var(--hairline-strong),
     var(--shadow-md);
@@ -916,6 +923,7 @@ a.link:hover {
 
 .btn--primary {
   --btn-bg: var(--accent);
+  --btn-bg-hover: var(--accent-bright);
   --btn-fg: #fbfaf7;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
@@ -923,7 +931,6 @@ a.link:hover {
 }
 
 .btn--primary:hover {
-  --btn-bg: var(--accent-bright);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     0 6px 22px rgba(28, 92, 71, 0.3);
@@ -931,6 +938,7 @@ a.link:hover {
 
 .btn--quiet {
   --btn-bg: transparent;
+  --btn-bg-hover: var(--glass-sunken);
   --btn-fg: var(--ink-2);
   box-shadow: none;
   backdrop-filter: none;
@@ -938,17 +946,12 @@ a.link:hover {
 }
 
 .btn--quiet:hover {
-  --btn-bg: var(--glass-sunken);
   --btn-fg: var(--ink);
   box-shadow: none;
 }
 
 .btn--danger {
-  --btn-fg: var(--danger);
-}
-
-.btn--danger:hover {
-  --btn-bg: var(--danger-soft);
+  --btn-bg-hover: var(--danger-soft);
   --btn-fg: var(--danger);
 }
 
@@ -962,9 +965,11 @@ a.link:hover {
   width: 100%;
 }
 
-/* A button that reads as pressed — a filter that is currently on. */
+/* A button that reads as pressed — a filter that is currently on. It keeps its
+   pine tint and its ring on hover, only a shade stronger. */
 .btn[aria-pressed="true"] {
   --btn-bg: var(--accent-soft);
+  --btn-bg-hover: var(--accent-soft-hi);
   --btn-fg: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent-line);
 }
@@ -1406,6 +1411,13 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   overflow-y: auto;
   overscroll-behavior: contain;
   flex: 1 1 auto;
+  /* Not optional, and not obvious: a flex item's min-height resolves to
+     min-content, so without this the body refuses to shrink below its own
+     content, grows past the bottom of the sheet, gets clipped by the sheet's
+     overflow:hidden — and `overflow-y: auto` never receives a constrained
+     height to scroll inside. Any sheet taller than the viewport is simply
+     unreachable at the bottom. */
+  min-height: 0;
 }
 
 /* A sheet that always shows its primary action, however long the body. */

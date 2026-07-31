@@ -187,3 +187,28 @@ export function rankKey(agg: TripAggregate, weights: Weights = DEFAULT_WEIGHTS):
   const confidence = agg.ratingCount / (agg.ratingCount + 2);
   return score * (0.85 + 0.15 * confidence);
 }
+
+/**
+ * What the round found out about the Durst card.
+ *
+ * Ten euros off a bill is the single largest lever on what an Ausflug costs, so
+ * this is deliberately not averaged into anything — it is reported. Disagreement
+ * is kept visible rather than resolved by majority: if one person got the
+ * discount and another was refused, that is worth knowing before booking a table
+ * for fourteen.
+ */
+export type CardVerdict = "accepted" | "refused" | "mixed" | "unknown";
+
+export function cardVerdict(agg: TripAggregate): CardVerdict {
+  if (agg.cardYes > 0 && agg.cardNo > 0) return "mixed";
+  if (agg.cardYes > 0) return "accepted";
+  if (agg.cardNo > 0) return "refused";
+  return "unknown";
+}
+
+export const CARD_LABELS: Record<CardVerdict, string> = {
+  accepted: "Karte akzeptiert",
+  refused: "Karte abgelehnt",
+  mixed: "Karte unklar",
+  unknown: "Karte nicht probiert",
+};

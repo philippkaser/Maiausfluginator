@@ -288,6 +288,7 @@ const ratingRoutes = {
         preis: clampInt(body.preis, 1, 10, "Preis-Leistung"),
         erlebnis: clampInt(body.erlebnis, 1, 10, "Gesamterlebnis"),
         waitMinutes: optionalInt(body.waitMinutes, 0, 300, "Wartezeit"),
+        cardAccepted: typeof body.cardAccepted === "boolean" ? body.cardAccepted : null,
         comment: optionalString(body.comment, "Kommentar", 1500),
       });
       return json({ rating, trip: repo.getTrip(param(req, "id"), user.id) });

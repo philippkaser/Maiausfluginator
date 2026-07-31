@@ -81,6 +81,9 @@ CREATE TABLE IF NOT EXISTS ratings (
   preis         INTEGER NOT NULL,
   erlebnis      INTEGER NOT NULL,
   wait_minutes  INTEGER,
+  -- 1 accepted, 0 refused, NULL nobody tried. See the migration below: this
+  -- column arrived after the first databases did.
+  card_accepted INTEGER,
   comment       TEXT,
   created_at    INTEGER NOT NULL,
   updated_at    INTEGER NOT NULL,
@@ -109,6 +112,32 @@ CREATE TABLE IF NOT EXISTS photo_likes (
   PRIMARY KEY (photo_id, user_id)
 );
 `);
+
+/* ------------------------------------------------------------------ */
+/* Migrations                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The schema above is all `CREATE TABLE IF NOT EXISTS`, which is fine for a new
+ * database and does nothing at all for one that already has rows. So any column
+ * added after the first deployment needs to be added here too — otherwise it
+ * exists on a developer's fresh copy and is missing on the one with the real
+ * Ausflüge in it.
+ *
+ * Idempotent by inspection rather than by version number: there is one instance
+ * of this app, and "does the column exist" is a question SQLite will answer
+ * directly.
+ */
+function addColumn(table: string, column: string, definition: string): void {
+  const columns = db.query<{ name: string }, []>(`PRAGMA table_info(${table})`).all();
+  if (columns.some((c) => c.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  console.log(`  Datenbank erweitert: ${table}.${column}`);
+}
+
+// Whether the Durst card was accepted. Ten euros off a bill is worth recording.
+addColumn("ratings", "card_accepted", "INTEGER");
+
 
 export function now(): number {
   return Date.now();

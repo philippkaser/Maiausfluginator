@@ -94,6 +94,7 @@ export const api = {
       preis: number;
       erlebnis: number;
       waitMinutes: number | null;
+      cardAccepted: boolean | null;
       comment: string | null;
     },
   ) =>

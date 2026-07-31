@@ -57,6 +57,7 @@ interface RatingRow {
   preis: number;
   erlebnis: number;
   wait_minutes: number | null;
+  card_accepted: number | null;
   comment: string | null;
   created_at: number;
   updated_at: number;
@@ -115,6 +116,8 @@ function mapRating(row: RatingRow): Rating {
     preis: row.preis,
     erlebnis: row.erlebnis,
     waitMinutes: row.wait_minutes,
+    // Three states, so it cannot collapse to a boolean on the way out.
+    cardAccepted: row.card_accepted === null ? null : row.card_accepted === 1,
     comment: row.comment,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -233,8 +236,19 @@ const TRIP_SELECT = `
 
 function aggregateFor(tripId: string, restaurant: Restaurant): TripAggregate {
   const rows = db
-    .query<{ essen: number; service: number; ambiente: number; preis: number; erlebnis: number; wait_minutes: number | null }, [string]>(
-      "SELECT essen, service, ambiente, preis, erlebnis, wait_minutes FROM ratings WHERE trip_id = ?",
+    .query<
+      {
+        essen: number;
+        service: number;
+        ambiente: number;
+        preis: number;
+        erlebnis: number;
+        wait_minutes: number | null;
+        card_accepted: number | null;
+      },
+      [string]
+    >(
+      "SELECT essen, service, ambiente, preis, erlebnis, wait_minutes, card_accepted FROM ratings WHERE trip_id = ?",
     )
     .all(tripId);
 
@@ -254,6 +268,11 @@ function aggregateFor(tripId: string, restaurant: Restaurant): TripAggregate {
     means,
     waitMedian: median(waits),
     waitCount: waits.length,
+    // Counted rather than averaged: whether a place takes the card is a fact
+    // about the place, and two people disagreeing is worth showing as a
+    // disagreement instead of hiding behind a majority.
+    cardYes: rows.filter((r) => r.card_accepted === 1).length,
+    cardNo: rows.filter((r) => r.card_accepted === 0).length,
     distanceKm: restaurant.distanceKm,
     travelMin: restaurant.travelMin,
   };
@@ -390,6 +409,7 @@ export interface RatingInput {
   preis: number;
   erlebnis: number;
   waitMinutes: number | null;
+  cardAccepted: boolean | null;
   comment: string | null;
 }
 
@@ -401,9 +421,9 @@ export function upsertRating(tripId: string, userId: string, input: RatingInput)
   const timestamp = now();
   db.query(
     `INSERT INTO ratings
-       (id, trip_id, user_id, essen, service, ambiente, preis, erlebnis, wait_minutes, comment, created_at, updated_at)
+       (id, trip_id, user_id, essen, service, ambiente, preis, erlebnis, wait_minutes, card_accepted, comment, created_at, updated_at)
      VALUES
-       ($id, $trip_id, $user_id, $essen, $service, $ambiente, $preis, $erlebnis, $wait_minutes, $comment, $created_at, $updated_at)
+       ($id, $trip_id, $user_id, $essen, $service, $ambiente, $preis, $erlebnis, $wait_minutes, $card_accepted, $comment, $created_at, $updated_at)
      ON CONFLICT (trip_id, user_id) DO UPDATE SET
        essen = excluded.essen,
        service = excluded.service,
@@ -411,6 +431,7 @@ export function upsertRating(tripId: string, userId: string, input: RatingInput)
        preis = excluded.preis,
        erlebnis = excluded.erlebnis,
        wait_minutes = excluded.wait_minutes,
+       card_accepted = excluded.card_accepted,
        comment = excluded.comment,
        updated_at = excluded.updated_at`,
   ).run({
@@ -423,6 +444,7 @@ export function upsertRating(tripId: string, userId: string, input: RatingInput)
     preis: input.preis,
     erlebnis: input.erlebnis,
     wait_minutes: input.waitMinutes,
+    card_accepted: input.cardAccepted === null ? null : input.cardAccepted ? 1 : 0,
     comment: input.comment,
     created_at: timestamp,
     updated_at: timestamp,

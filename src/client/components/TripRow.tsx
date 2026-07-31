@@ -11,7 +11,7 @@
 import { photoUrl } from "../lib/api.ts";
 import { formatDecimal, formatShortDate } from "../lib/format.ts";
 import { Link } from "../lib/router.tsx";
-import { scoreTrip, type Weights } from "../../shared/scoring.ts";
+import { cardVerdict, scoreTrip, type Weights } from "../../shared/scoring.ts";
 import type { Trip } from "../../shared/types.ts";
 import { Chevron } from "./ui.tsx";
 
@@ -29,11 +29,16 @@ export function TripRow({
 
   // One secondary line rather than a row of badges: it reads faster and leaves
   // the eye a single anchor per row.
+  const card = cardVerdict(agg);
+
   const facts = [
     restaurant.town,
     formatShortDate(trip.tripDate),
     `${formatDecimal(restaurant.distanceKm)} km`,
     agg.waitMedian === null ? null : `${Math.round(agg.waitMedian)} min Wartezeit`,
+    // Only when it is good news. A row is scanned, not studied, and "abgelehnt"
+    // on every line would just be noise.
+    card === "accepted" ? "Karte ✓" : null,
     `${agg.ratingCount} ${agg.ratingCount === 1 ? "Stimme" : "Stimmen"}`,
   ].filter(Boolean);
 

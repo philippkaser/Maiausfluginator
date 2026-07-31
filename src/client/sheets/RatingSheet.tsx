@@ -13,12 +13,30 @@
 import { useState } from "react";
 
 import { Sheet } from "../components/Sheet.tsx";
+import { Segmented } from "../components/ui.tsx";
 import { api, ApiError } from "../lib/api.ts";
 import { useToast } from "../lib/store.tsx";
 import { DIMENSIONS, DIMENSION_HINTS, DIMENSION_LABELS } from "../../shared/types.ts";
 import type { Dimension, Rating, TripDetail } from "../../shared/types.ts";
 
-type Draft = Record<Dimension, number> & { waitMinutes: string; comment: string };
+/**
+ * The card answer is three-valued, and the third value carries real meaning:
+ * "nicht probiert" is not "abgelehnt". Held as a string because that is what a
+ * segmented control deals in.
+ */
+type CardAnswer = "unbekannt" | "ja" | "nein";
+
+const CARD_OPTIONS: { value: CardAnswer; label: string; title: string }[] = [
+  { value: "ja", label: "Angenommen", title: "Die Karte wurde akzeptiert — zehn Euro weniger" },
+  { value: "nein", label: "Abgelehnt", title: "Die Karte wurde nicht akzeptiert" },
+  { value: "unbekannt", label: "Nicht probiert", title: "Niemand hat es versucht" },
+];
+
+type Draft = Record<Dimension, number> & {
+  waitMinutes: string;
+  card: CardAnswer;
+  comment: string;
+};
 
 const NEUTRAL: Draft = {
   essen: 7,
@@ -27,8 +45,17 @@ const NEUTRAL: Draft = {
   preis: 7,
   erlebnis: 7,
   waitMinutes: "",
+  card: "unbekannt",
   comment: "",
 };
+
+function toCardAnswer(value: boolean | null): CardAnswer {
+  return value === null ? "unbekannt" : value ? "ja" : "nein";
+}
+
+function fromCardAnswer(answer: CardAnswer): boolean | null {
+  return answer === "unbekannt" ? null : answer === "ja";
+}
 
 function toDraft(rating: Rating | null): Draft {
   if (!rating) return { ...NEUTRAL };
@@ -39,6 +66,7 @@ function toDraft(rating: Rating | null): Draft {
     preis: rating.preis,
     erlebnis: rating.erlebnis,
     waitMinutes: rating.waitMinutes === null ? "" : String(rating.waitMinutes),
+    card: toCardAnswer(rating.cardAccepted),
     comment: rating.comment ?? "",
   };
 }
@@ -68,6 +96,7 @@ export function RatingSheet({
         preis: draft.preis,
         erlebnis: draft.erlebnis,
         waitMinutes: draft.waitMinutes === "" ? null : Number(draft.waitMinutes),
+        cardAccepted: fromCardAnswer(draft.card),
         comment: draft.comment.trim() || null,
       });
       onSaved(result.trip);
@@ -157,6 +186,21 @@ export function RatingSheet({
             ist völlig in Ordnung.
           </span>
         </label>
+
+        <div className="field">
+          <span className="field__label">Durst-Karte</span>
+          <Segmented
+            value={draft.card}
+            options={CARD_OPTIONS}
+            label="Durst-Karte"
+            block
+            onChange={(card) => setDraft((current) => ({ ...current, card }))}
+          />
+          <span className="field__hint">
+            Zehn Euro weniger auf die Rechnung — das ist für ein Lokal ein echtes Argument. Wenn es
+            niemand versucht hat, lass es einfach auf „nicht probiert“ stehen.
+          </span>
+        </div>
 
         <label className="field">
           <span className="field__label">Kommentar</span>

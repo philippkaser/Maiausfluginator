@@ -35,7 +35,7 @@ Feld als eine Liste. Sortierbar nach Score, Datum, Nähe oder Tempo, mit einem F
 die eigenen offenen Bewertungen.
 
 **Ausflüge** — die Saison zum Durchsehen. Ein Raster aus Fotos, Filter (zuletzt, beste,
-um die Ecke, ungehört) und das **Radar**: alle Ziele nach echter Himmelsrichtung und
+um die Ecke, mit Karte, ungehört) und das **Radar**: alle Ziele nach echter Himmelsrichtung und
 Entfernung ab HQ, gerechnet im Haus, ohne Kartendienst von außen.
 
 **Runde** — die Leute. Die **Auszeichnungen** der Saison als Urkunden gesetzt (bester
@@ -46,11 +46,19 @@ samt „wie streng bewertet wer eigentlich".
 Milchglasplatte darüber, die Aufschlüsselung des Scores, jede Stimme mit ihrem Kommentar,
 die Fotogalerie.
 
-In Schubladen: **Bewerten** (fünf Regler, Wartezeit, Kommentar — eine Stimme pro Person
-und Ausflug, jederzeit änderbar), **Eintragen**, die **Gewichtung**, das eigene **Konto**
-samt Schlüssel und die **Verwaltung** der Einladungscodes. `?bewerten` an der Adresse
+In Schubladen: **Bewerten** (fünf Regler, Wartezeit, Durst-Karte, Kommentar — eine Stimme
+pro Person und Ausflug, jederzeit änderbar), **Eintragen**, die **Gewichtung**, das eigene
+**Konto** samt Schlüssel und die **Verwaltung** der Einladungscodes. `?bewerten` an der Adresse
 eines Ausflugs öffnet das Bewertungsformular direkt — „du hast noch drei offen" ist damit
 eine Liste von Links.
+
+**Durst-Karte.** Beim Bewerten wird mitgefragt, ob die Karte angenommen wurde — ja, nein
+oder nicht probiert. Zehn Euro weniger auf die Rechnung sind der größte einzelne Hebel auf
+das, was ein Ausflug kostet, also wird das nicht in irgendeinen Mittelwert verrechnet,
+sondern berichtet: als Kupfer-Etikett auf der Ausflugsseite, als Häkchen in der Rangliste
+und als eigener Filter. Widerspruch bleibt sichtbar — wenn einer den Rabatt bekam und eine
+abgewiesen wurde, steht genau das dort, statt von einer Mehrheit überstimmt zu werden. Auf
+den Mai-Score wirkt es (noch) nicht: das würde jeden bestehenden Score verschieben.
 
 Dazu, überall: **Food-Pics** mit Drag & Drop, Bildtexten, Likes und Lightbox (Bilder sind
 nur für angemeldete Mitglieder abrufbar) und die **Anfahrt**, aus den Koordinaten ab dem
@@ -103,8 +111,8 @@ bun run start
 
 Es gibt weder E-Mail-Versand noch Passwörter. Wer einen Einladungscode einlöst, wählt seinen
 Namen und bekommt **einmalig** einen persönlichen Schlüssel angezeigt (`XXXX-XXXX-XXXX-XXXX`).
-Name plus Schlüssel ist das Login auf jedem weiteren Gerät. Verloren? Unter *Mitglieder →
-Meinen Schlüssel erneuern* gibt es einen neuen, der alte verfällt sofort.
+Name plus Schlüssel ist das Login auf jedem weiteren Gerät. Verloren? Im eigenen **Konto**
+(Avatar rechts oben) → *Schlüssel erneuern* gibt es einen neuen, der alte verfällt sofort.
 
 Gespeichert wird nur ein Argon2id-Hash des Schlüssels. Sessions sind zufällige Tokens, von denen
 in der Datenbank ebenfalls nur der SHA-256 liegt; das Cookie ist `HttpOnly` und `SameSite=Lax`.
@@ -143,7 +151,7 @@ löschen. Bewertungen sind keine dabei: jede Zahl in dieser App kommt von jemand
 ```
 src/
   shared/      Typen und die Score-Berechnung (Server und Client rechnen identisch)
-  server/      Bun.serve, SQLite, Auth, Geo, Upload-Handling
+  server/      Bun.serve, SQLite (samt Migrationen in db.ts), Auth, Geo, Upload-Handling
   client/
     pages/       die drei Bereiche, ein Ausflug, die Tür
     sheets/      alles, was Formular oder Einstellung ist
@@ -296,3 +304,57 @@ Schublade und Lightbox sind Schichten über der Seite und schulden derselben Tas
 Fokus hinein, Fokus gefangen, Fokus zurück an die Stelle, von der er kam, Escape schließt, die Seite
 darunter scrollt nicht und verrutscht auch nicht dabei. Das steht **einmal** in `lib/a11y.ts`, damit
 eine Korrektur beide erreicht.
+
+## Ausblick: Karte statt Koordinaten, und wie wer hingefahren ist
+
+**Noch nicht gebaut.** Steht hier, weil es die nächste größere Sache ist und weil
+die Entscheidungen davor bekannt sein sollten.
+
+Heute wird ein Lokal über **Koordinaten** eingetragen (`lat`/`lon` von Hand), und
+`server/geo.ts` rechnet daraus Entfernung und Fahrzeit: Luftlinie → Umwegfaktor →
+Fahrzeit, mit der Möglichkeit, echte Werte zu überschreiben. Das ist eine Notlösung
+und fühlt sich auch so an — niemand hat Koordinaten im Kopf.
+
+Gewünscht ist zweierlei:
+
+1. **Eine echte Karte**, auf der man den Ort anklickt, statt Zahlen zu tippen.
+2. **Verkehrsmittel pro Person**: Rad, Auto, zu Fuß, Bus. Entfernung und Dauer
+   ergeben sich daraus, statt für alle gleich angenommen zu werden.
+
+### Was das anfasst
+
+| Stelle | Änderung |
+| --- | --- |
+| `server/geo.ts` | Die Schätzung aus Luftlinie und Umwegfaktor wird durch echtes Routing ersetzt — pro Verkehrsmittel. |
+| `restaurants` (Tabelle) | Ein Ort bekommt eine Geometrie statt zweier Zahlen; `distance_km`/`travel_min` werden vom festen Wert zur Route pro Verkehrsmittel. |
+| `ratings` (Tabelle) | Neu: womit *diese* Person angereist ist. |
+| `shared/scoring.ts` | Die Komponente **Anfahrt** ist heute eine Zahl pro Lokal. Mit Verkehrsmitteln pro Person wird sie eine Verteilung. |
+| `NewTripSheet` | Das Koordinatenfeld verschwindet und wird ein Kartenausschnitt. |
+| `components/Radar.tsx` | Bleibt. Das Radar ist keine schlechte Karte, sondern eine andere Aussage: Richtung und Entfernung ab HQ auf einen Blick. |
+
+### Was vorher zu entscheiden ist
+
+**Verlassen Daten das Haus?** Das Radar existiert genau deshalb, weil diese App
+bisher keine Anfrage nach draußen schickt — eine Liste, wo eine Firma mittagessen
+geht, ist nichts für einen fremden Server. Eine echte Karte heißt Kartenkacheln,
+und die kommen entweder von einem Anbieter (dann ist diese Eigenschaft weg), aus
+einem selbst gehosteten Satz (groß, aber machbar für eine Region) oder aus einer
+hausinternen Quelle. Das ist keine technische, sondern eine Hausentscheidung.
+
+**Wer routet?** Für belastbare Zeiten pro Verkehrsmittel braucht es eine
+Routing-Maschine (OSRM, Valhalla, GraphHopper — alle selbst hostbar) oder einen
+Dienst. Ohne die eine ist „mit dem Rad" nur ein anderer Multiplikator auf die
+Luftlinie, also genau die Schätzung, die ersetzt werden soll.
+
+**Wessen Anfahrt zählt für den Score?** Wenn Anna mit dem Rad kommt und Markus
+fährt, sind das zwei verschiedene Anfahrten zum selben Teller. Denkbar: der
+Median über alle Anreisen, oder das Verkehrsmittel der Mehrheit, oder die Anfahrt
+bleibt am Lokal (mit dem Auto als Bezug) und das Verkehrsmittel wird nur erfasst
+und angezeigt. Die erste Variante ist die ehrlichste und die einzige, die die
+Rangliste verändert — deshalb gehört sie ausgesprochen und nicht nebenbei
+entschieden.
+
+**Was passiert mit den zwölf Beispiel-Lokalen und den bestehenden Ausflügen?**
+Deren Koordinaten sind Näherungen. Eine Migration kann sie übernehmen, aber die
+gerouteten Werte werden von den heute gespeicherten abweichen — und damit die
+Anfahrts-Komponente jedes bestehenden Scores.

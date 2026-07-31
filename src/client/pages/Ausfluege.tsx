@@ -16,14 +16,15 @@ import { useSeason } from "../lib/data.tsx";
 import { formatHours } from "../lib/format.ts";
 import { useReveal } from "../lib/motion.ts";
 import { useSession, useStoredWeights } from "../lib/store.tsx";
-import { rankKey } from "../../shared/scoring.ts";
+import { cardVerdict, rankKey } from "../../shared/scoring.ts";
 
-type Lens = "neu" | "score" | "nah" | "offen";
+type Lens = "neu" | "score" | "nah" | "karte" | "offen";
 
 const LENSES: { value: Lens; label: string; title: string }[] = [
   { value: "neu", label: "Zuletzt", title: "Die jüngsten Ausflüge zuerst" },
   { value: "score", label: "Beste", title: "Nach dem Mai-Score" },
   { value: "nah", label: "Um die Ecke", title: "Kürzeste Anfahrt ab HQ" },
+  { value: "karte", label: "Karte", title: "Lokale, die die Durst-Karte annehmen" },
   { value: "offen", label: "Ungehört", title: "Ausflüge ohne deine Stimme" },
 ];
 
@@ -37,7 +38,12 @@ export function Ausfluege() {
 
   const visible = useMemo(() => {
     if (!trips) return [];
-    const list = lens === "offen" ? trips.filter((trip) => !trip.myRating) : [...trips];
+    const list =
+      lens === "offen"
+        ? trips.filter((trip) => !trip.myRating)
+        : lens === "karte"
+          ? trips.filter((trip) => cardVerdict(trip.aggregate) === "accepted")
+          : [...trips];
     switch (lens) {
       case "score":
         list.sort((a, b) => rankKey(b.aggregate, weights) - rankKey(a.aggregate, weights));
@@ -92,13 +98,19 @@ export function Ausfluege() {
           <Pane>
             <Empty
               title={
-                lens === "offen" ? "Du hast überall etwas gesagt." : "Noch kein Ausflug eingetragen."
+                lens === "offen"
+                  ? "Du hast überall etwas gesagt."
+                  : lens === "karte"
+                    ? "Noch nirgends mit der Karte bezahlt."
+                    : "Noch kein Ausflug eingetragen."
               }
             >
               <p className="small">
                 {lens === "offen"
                   ? "Zu jedem Ziel liegt eine Stimme von dir."
-                  : "Oben rechts auf „Eintragen“ — Lokal, Datum, fertig."}
+                  : lens === "karte"
+                    ? "Sobald jemand beim Bewerten „angenommen“ meldet, steht das Lokal hier."
+                    : "Oben rechts auf „Eintragen“ — Lokal, Datum, fertig."}
               </p>
             </Empty>
           </Pane>

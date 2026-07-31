@@ -29,7 +29,7 @@ import { useReveal } from "../lib/motion.ts";
 import { Link, useRouter } from "../lib/router.tsx";
 import { useSession, useStoredWeights, useToast } from "../lib/store.tsx";
 import { RatingSheet } from "../sheets/RatingSheet.tsx";
-import { scoreTrip } from "../../shared/scoring.ts";
+import { CARD_LABELS, cardVerdict, scoreTrip } from "../../shared/scoring.ts";
 import { DIMENSIONS, DIMENSION_LABELS } from "../../shared/types.ts";
 import type { TripDetail } from "../../shared/types.ts";
 import { de1 } from "../../shared/num.ts";
@@ -114,8 +114,27 @@ export function TripPage({ tripId }: { tripId: string }) {
     }
   }
 
+  const card = cardVerdict(agg);
+
   const facts = (
     <div className="row row--tight">
+      {/* The card first, and in copper when it lands: ten euros a head off the
+          bill outranks every other fact on this page. */}
+      {card !== "unknown" && (
+        <Tag
+          tone={card === "accepted" ? "copper" : "plain"}
+          title={
+            card === "mixed"
+              ? `${agg.cardYes}× angenommen, ${agg.cardNo}× abgelehnt`
+              : card === "accepted"
+                ? `Von ${agg.cardYes} ${agg.cardYes === 1 ? "Person" : "Personen"} bestätigt — 10 € weniger`
+                : `Von ${agg.cardNo} ${agg.cardNo === 1 ? "Person" : "Personen"} gemeldet`
+          }
+        >
+          {CARD_LABELS[card]}
+          {card === "mixed" && ` (${agg.cardYes}:${agg.cardNo})`}
+        </Tag>
+      )}
       <Tag title={`Einfache Strecke ab ${hq.label}`}>
         {formatDecimal(restaurant.distanceKm)} km ab HQ
       </Tag>
@@ -257,6 +276,11 @@ export function TripPage({ tripId }: { tripId: string }) {
                         {entry.waitMinutes !== null && (
                           <span>
                             Wartezeit <b className="tnum">{entry.waitMinutes} min</b>
+                          </span>
+                        )}
+                        {entry.cardAccepted !== null && (
+                          <span>
+                            Karte <b>{entry.cardAccepted ? "angenommen" : "abgelehnt"}</b>
                           </span>
                         )}
                       </div>

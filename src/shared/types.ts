@@ -72,6 +72,11 @@ export interface Rating {
   erlebnis: number;
   /** Minutes between ordering and the food arriving. */
   waitMinutes: number | null;
+  /**
+   * Whether the Durst card was accepted. `null` means nobody tried, which is a
+   * different fact from "refused" and has to stay distinguishable.
+   */
+  cardAccepted: boolean | null;
   comment: string | null;
   createdAt: number;
   updatedAt: number;
@@ -100,6 +105,9 @@ export interface TripAggregate {
   /** Median reported wait for the food, in minutes. */
   waitMedian: number | null;
   waitCount: number;
+  /** How many people reported the Durst card accepted, and how many refused. */
+  cardYes: number;
+  cardNo: number;
   distanceKm: number;
   travelMin: number;
 }
