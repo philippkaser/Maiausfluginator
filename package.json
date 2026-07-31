@@ -9,7 +9,7 @@
     "start": "NODE_ENV=production bun src/server/index.ts",
     "seed": "bun src/server/seed.ts",
     "invite": "bun scripts/invite.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "bun node_modules/typescript/lib/tsc.js --noEmit"
   },
   "dependencies": {
     "react": "^19.2.0",

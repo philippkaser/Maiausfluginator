@@ -1,11 +1,26 @@
+/**
+ * Eintragen.
+ *
+ * This used to be a page at `/neu`, which meant leaving the ranking in order to
+ * add something to it. It is a sheet now: the list stays behind you the whole
+ * time, and closing it puts you back exactly where you were.
+ *
+ * Two steps, because there are genuinely two questions — where did you go, and
+ * when. The second step also holds the escape hatch for a place that is not in
+ * the list yet, since adding a restaurant is much rarer than adding an outing to
+ * one that already exists.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 
+import { Sheet } from "../components/Sheet.tsx";
+import { Field, Spinner, Tag } from "../components/ui.tsx";
 import { api, ApiError } from "../lib/api.ts";
+import { useSeason } from "../lib/data.tsx";
 import { formatDecimal, formatMinutes, todayIso } from "../lib/format.ts";
 import { useRouter } from "../lib/router.tsx";
 import { useSession, useToast } from "../lib/store.tsx";
 import type { Restaurant } from "../../shared/types.ts";
-import { Field, Spinner, Tag } from "../components/ui.tsx";
 
 const EMPTY_PLACE = {
   name: "",
@@ -19,26 +34,35 @@ const EMPTY_PLACE = {
   travelMin: "",
 };
 
-export function NewTrip() {
-  const { navigate } = useRouter();
+export function NewTripSheet({ onClose }: { onClose: () => void }) {
   const { hq } = useSession();
+  const { merge } = useSeason();
+  const { navigate } = useRouter();
   const toast = useToast();
 
   const [restaurants, setRestaurants] = useState<Restaurant[] | null>(null);
   const [restaurantId, setRestaurantId] = useState("");
-  const [creatingPlace, setCreatingPlace] = useState(false);
+  const [newPlace, setNewPlace] = useState(false);
   const [place, setPlace] = useState({ ...EMPTY_PLACE });
 
   const [title, setTitle] = useState("");
-  const [tripDate, setTripDate] = useState(todayIso());
+  const [tripDate, setTripDate] = useState(todayIso);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    let live = true;
     api
       .restaurants()
-      .then((data) => setRestaurants(data.restaurants))
-      .catch((err) => toast(err instanceof ApiError ? err.message : "Laden fehlgeschlagen", "error"));
+      .then((data) => {
+        if (live) setRestaurants(data.restaurants);
+      })
+      .catch((err) => {
+        if (live) toast(err instanceof ApiError ? err.message : "Die Lokale laden nicht.", "error");
+      });
+    return () => {
+      live = false;
+    };
   }, [toast]);
 
   const selected = useMemo(
@@ -49,10 +73,12 @@ export function NewTrip() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
+
     try {
       let targetId = restaurantId;
+      let fallbackName = selected?.name ?? "Ausflug";
 
-      if (creatingPlace) {
+      if (newPlace) {
         const created = await api.createRestaurant({
           name: place.name,
           town: place.town,
@@ -65,17 +91,14 @@ export function NewTrip() {
           travelMin: place.travelMin === "" ? null : Number(place.travelMin),
         });
         targetId = created.restaurant.id;
+        fallbackName = created.restaurant.name;
       }
 
       if (!targetId) {
-        toast("Bitte ein Lokal auswählen.", "error");
+        toast("Wähl zuerst ein Lokal.", "error");
         setBusy(false);
         return;
       }
-
-      const fallbackName = creatingPlace
-        ? place.name
-        : (restaurants?.find((restaurant) => restaurant.id === targetId)?.name ?? "Ausflug");
 
       const created = await api.createTrip({
         restaurantId: targetId,
@@ -84,39 +107,46 @@ export function NewTrip() {
         notes: notes.trim() || null,
       });
 
-      toast("Ausflug eingetragen. Jetzt bewerten!", "success");
-      navigate(`/ausflug/${created.trip.id}`);
+      merge(created.trip);
+      toast("Eingetragen. Jetzt bist du am Wort.", "success");
+      onClose();
+      // Straight to the trip with the rating sheet already open — the reason for
+      // entering an Ausflug is almost always to say something about it.
+      navigate(`/ausflug/${created.trip.id}?bewerten=1`);
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "Speichern fehlgeschlagen", "error");
+      toast(err instanceof ApiError ? err.message : "Das ließ sich nicht speichern.", "error");
       setBusy(false);
     }
   }
 
   return (
-    <div className="stack stack--lg fade-in">
-      <div>
-        <h1>Ausflug eintragen</h1>
-        <p className="lead" style={{ marginTop: 10 }}>
-          Lokal und Datum genügen. Entfernung und Fahrzeit ab {hq.label} rechnet der Maiausfluginator
-          aus den Koordinaten – wenn du es genauer weißt, trag die echten Werte ein.
-        </p>
-      </div>
-
-      <form onSubmit={submit} className="split split--even">
-        <section className="card card--pad stack">
+    <Sheet
+      title="Ausflug eintragen"
+      description={`Lokal und Datum genügen — Entfernung und Fahrzeit ab ${hq.label} rechnet der Maiausfluginator selbst.`}
+      onClose={onClose}
+      footer={
+        // Outside the scrolling body via the `form` attribute, so the primary
+        // action is reachable however long the form gets.
+        <button type="submit" form="new-trip" className="btn btn--primary btn--block" disabled={busy}>
+          {busy ? "Speichern…" : "Ausflug anlegen"}
+        </button>
+      }
+    >
+      <form id="new-trip" onSubmit={submit} className="stack stack--md">
+        <div className="stack">
           <div className="row row--between">
-            <h2>Wohin ging es?</h2>
+            <span className="eyebrow">Wohin ging es</span>
             <button
               type="button"
               className="btn btn--quiet btn--sm"
-              onClick={() => setCreatingPlace((value) => !value)}
+              onClick={() => setNewPlace((value) => !value)}
             >
-              {creatingPlace ? "Aus Liste wählen" : "Neues Lokal anlegen"}
+              {newPlace ? "Aus der Liste wählen" : "Lokal fehlt noch"}
             </button>
           </div>
 
-          {creatingPlace ? (
-            <div className="stack" style={{ gap: 14 }}>
+          {newPlace ? (
+            <div className="stack">
               <Field label="Name des Lokals">
                 <input
                   className="input"
@@ -124,9 +154,11 @@ export function NewTrip() {
                   onChange={(event) => setPlace({ ...place, name: event.target.value })}
                   required
                   maxLength={120}
+                  autoFocus
                 />
               </Field>
-              <div className="grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+
+              <div className="pair">
                 <Field label="Ort">
                   <input
                     className="input"
@@ -146,6 +178,7 @@ export function NewTrip() {
                   />
                 </Field>
               </div>
+
               <Field label="Adresse">
                 <input
                   className="input"
@@ -154,6 +187,7 @@ export function NewTrip() {
                   maxLength={200}
                 />
               </Field>
+
               <Field label="Website">
                 <input
                   className="input"
@@ -166,7 +200,12 @@ export function NewTrip() {
 
               <hr className="divider" />
 
-              <div className="grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <p className="small dim">
+                Koordinaten genügen — daraus werden Entfernung und Fahrzeit geschätzt. Wer die echten
+                Werte kennt, trägt sie ein; die gewinnen immer.
+              </p>
+
+              <div className="pair">
                 <Field label="Breitengrad" hint="z. B. 46.7150">
                   <input
                     className="input"
@@ -185,8 +224,8 @@ export function NewTrip() {
                 </Field>
               </div>
 
-              <div className="grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-                <Field label="Entfernung (km)" hint="Leer lassen = aus Koordinaten geschätzt">
+              <div className="pair">
+                <Field label="Entfernung" hint="Kilometer, einfache Strecke">
                   <input
                     className="input"
                     value={place.distanceKm}
@@ -194,7 +233,7 @@ export function NewTrip() {
                     inputMode="decimal"
                   />
                 </Field>
-                <Field label="Fahrzeit (min)" hint="Einfache Strecke ab HQ">
+                <Field label="Fahrzeit" hint="Minuten ab HQ">
                   <input
                     className="input"
                     value={place.travelMin}
@@ -205,9 +244,9 @@ export function NewTrip() {
               </div>
             </div>
           ) : restaurants === null ? (
-            <Spinner label="Lokale werden geladen…" />
+            <Spinner label="Lokale…" />
           ) : (
-            <>
+            <div className="stack">
               <Field label="Lokal">
                 <select
                   className="select"
@@ -229,15 +268,19 @@ export function NewTrip() {
                   <Tag>{formatDecimal(selected.distanceKm)} km ab HQ</Tag>
                   <Tag>{formatMinutes(selected.travelMin)} Fahrt</Tag>
                   {selected.cuisine && <Tag>{selected.cuisine}</Tag>}
-                  {selected.travelSource === "estimated" && <Tag>geschätzt</Tag>}
+                  {selected.travelSource === "estimated" && (
+                    <Tag title="Aus den Koordinaten gerechnet, nicht nachgemessen">geschätzt</Tag>
+                  )}
                 </div>
               )}
-            </>
+            </div>
           )}
-        </section>
+        </div>
 
-        <section className="card card--pad stack">
-          <h2>Wann & was</h2>
+        <hr className="divider" />
+
+        <div className="stack">
+          <span className="eyebrow">Wann und was</span>
 
           <Field label="Datum">
             <input
@@ -249,7 +292,7 @@ export function NewTrip() {
             />
           </Field>
 
-          <Field label="Titel" hint="Optional – sonst nehmen wir den Namen des Lokals.">
+          <Field label="Titel" hint="Optional — sonst nehmen wir den Namen des Lokals.">
             <input
               className="input"
               value={title}
@@ -267,15 +310,8 @@ export function NewTrip() {
               maxLength={2000}
             />
           </Field>
-
-          <button type="submit" className="btn btn--primary btn--block" disabled={busy}>
-            {busy ? "Speichern…" : "Ausflug anlegen"}
-          </button>
-          <button type="button" className="btn btn--quiet btn--block" onClick={() => navigate("/")}>
-            Abbrechen
-          </button>
-        </section>
+        </div>
       </form>
-    </div>
+    </Sheet>
   );
 }

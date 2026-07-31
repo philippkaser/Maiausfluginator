@@ -1,16 +1,27 @@
+/**
+ * A compass instead of a map.
+ *
+ * Every colour here is a token rather than a literal, even inside the SVG —
+ * inline SVG resolves CSS variables, so the chart cannot drift away from the
+ * palette, and a night version would need no changes in this file.
+ *
+ * Every Ausflugsziel plotted at its true bearing from the Durst HQ, distance
+ * running outwards on a square-root scale so the near ones do not all pile up in
+ * the middle. No tiles, no third party, no request leaving the building — which
+ * for an invite-only list of where a company eats lunch is the point, not a
+ * limitation.
+ */
+
 import { useMemo } from "react";
 
-import { scoreTrip } from "../../shared/scoring.ts";
-import type { Weights } from "../../shared/scoring.ts";
-import type { Trip } from "../../shared/types.ts";
 import { useRouter } from "../lib/router.tsx";
+import { scoreTrip, type Weights } from "../../shared/scoring.ts";
+import type { Trip } from "../../shared/types.ts";
 import { de1 } from "../../shared/num.ts";
 
-/**
- * A compass instead of a map: every Ausflugsziel plotted by its real bearing
- * from the Durst HQ, with distance running outwards on a square-root scale so
- * the near ones do not all pile up in the middle. No map tiles, no third party.
- */
+const CENTRE = 150;
+const REACH = 124;
+
 export function Radar({
   trips,
   weights,
@@ -28,16 +39,18 @@ export function Radar({
     return {
       maxKm: max,
       points: plotted.map((trip) => {
+        // Bearing is clockwise from north; SVG angles run clockwise from east.
         const angle = ((trip.restaurant.bearing! - 90) * Math.PI) / 180;
-        const radius = Math.sqrt(trip.restaurant.distanceKm / max) * 128;
+        const radius = Math.sqrt(trip.restaurant.distanceKm / max) * REACH;
         const score = scoreTrip(trip.aggregate, weights).score;
         return {
           trip,
           score,
-          x: 150 + Math.cos(angle) * radius,
-          y: 150 + Math.sin(angle) * radius,
-          color: score === null ? "rgba(255,255,255,0.26)" : "#0a84ff",
-          size: 5 + Math.min(9, trip.aggregate.ratingCount * 1.6),
+          x: CENTRE + Math.cos(angle) * radius,
+          y: CENTRE + Math.sin(angle) * radius,
+          // Size is confidence: a dot backed by eight votes is worth more of
+          // your attention than one backed by one.
+          size: 4.5 + Math.min(8, trip.aggregate.ratingCount * 1.5),
         };
       }),
     };
@@ -46,24 +59,29 @@ export function Radar({
   const rings = [0.25, 0.5, 0.75, 1];
 
   return (
-    <svg className="radar" viewBox="0 0 300 300" role="img" aria-label="Ausflugsziele nach Richtung und Entfernung ab HQ">
+    <svg
+      className="radar"
+      viewBox="0 0 300 300"
+      role="img"
+      aria-label={`Ausflugsziele nach Richtung und Entfernung ab ${hqLabel}`}
+    >
       <defs>
         <radialGradient id="radar-glow" cx="50%" cy="50%">
-          <stop offset="0%" stopColor="rgba(10,132,255,0.1)" />
-          <stop offset="100%" stopColor="rgba(10,132,255,0)" />
+          <stop offset="0%" stopColor="rgba(28, 92, 71, 0.07)" />
+          <stop offset="100%" stopColor="rgba(28,92,71,0)" />
         </radialGradient>
       </defs>
 
-      <circle cx="150" cy="150" r="132" fill="url(#radar-glow)" />
+      <circle cx={CENTRE} cy={CENTRE} r={REACH + 8} fill="url(#radar-glow)" />
 
       {rings.map((ring) => (
         <circle
           key={ring}
-          cx="150"
-          cy="150"
-          r={128 * ring}
+          cx={CENTRE}
+          cy={CENTRE}
+          r={REACH * ring}
           fill="none"
-          stroke="rgba(255,255,255,0.09)"
+          stroke="var(--hairline-strong)"
           strokeDasharray={ring === 1 ? undefined : "3 5"}
         />
       ))}
@@ -73,12 +91,12 @@ export function Radar({
         return (
           <text
             key={label}
-            x={150 + Math.cos(angle) * 143}
-            y={150 + Math.sin(angle) * 143 + 4}
+            x={CENTRE + Math.cos(angle) * (REACH + 17)}
+            y={CENTRE + Math.sin(angle) * (REACH + 17) + 4}
             textAnchor="middle"
             fontSize="10"
-            fill="rgba(235,235,245,0.36)"
-            letterSpacing="0.1em"
+            fill="var(--ink-3)"
+            letterSpacing="0.12em"
           >
             {label}
           </text>
@@ -88,34 +106,37 @@ export function Radar({
       {rings.map((ring) => (
         <text
           key={`km-${ring}`}
-          x="146"
-          y={150 - 128 * ring + 11}
+          x={CENTRE - 4}
+          y={CENTRE - REACH * ring + 11}
           textAnchor="end"
           fontSize="8.5"
-          fill="rgba(235,235,245,0.28)"
+          fill="var(--ink-3)"
           fontVariant="tabular-nums"
         >
           {Math.round(maxKm * ring * ring)} km
         </text>
       ))}
 
-      {/* HQ marker */}
-      <circle cx="150" cy="150" r="4.5" fill="#fff" />
-      <circle cx="150" cy="150" r="9" fill="none" stroke="rgba(255,255,255,0.3)" />
-      <text x="150" y="172" textAnchor="middle" fontSize="9" fill="rgba(235,235,245,0.5)">
+      {/* HQ. Everything on this chart is measured from here. */}
+      <circle cx={CENTRE} cy={CENTRE} r="4" fill="var(--ink)" />
+      <circle cx={CENTRE} cy={CENTRE} r="8.5" fill="none" stroke="var(--hairline-strong)" />
+      <text x={CENTRE} y={CENTRE + 24} textAnchor="middle" fontSize="9" fill="var(--ink-2)">
         {hqLabel}
       </text>
 
-      {points.map(({ trip, x, y, color, size, score }) => (
+      {points.map(({ trip, x, y, size, score }) => (
         <g
           key={trip.id}
+          className="radar__point"
           onClick={() => navigate(`/ausflug/${trip.id}`)}
-          style={{ cursor: "pointer" }}
           tabIndex={0}
           role="link"
-          aria-label={`${trip.restaurant.name}, ${de1(trip.restaurant.distanceKm)} km`}
+          aria-label={`${trip.restaurant.name}, ${de1(trip.restaurant.distanceKm)} Kilometer`}
           onKeyDown={(event) => {
-            if (event.key === "Enter") navigate(`/ausflug/${trip.id}`);
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              navigate(`/ausflug/${trip.id}`);
+            }
           }}
         >
           <title>
@@ -123,9 +144,25 @@ export function Radar({
               score === null ? "unbewertet" : `${de1(score)} Punkte`
             }`}
           </title>
-          <line x1="150" y1="150" x2={x} y2={y} stroke={color} strokeOpacity="0.2" />
-          <circle cx={x} cy={y} r={size} fill={color} fillOpacity="0.2" />
-          <circle cx={x} cy={y} r={size / 2.4} fill={color} />
+          <line
+            x1={CENTRE}
+            y1={CENTRE}
+            x2={x}
+            y2={y}
+            stroke={score === null ? "var(--hairline-strong)" : "var(--accent-line)"}
+          />
+          <circle
+            cx={x}
+            cy={y}
+            r={size}
+            fill={score === null ? "var(--glass-sunken)" : "var(--accent-soft)"}
+          />
+          <circle
+            cx={x}
+            cy={y}
+            r={size / 2.3}
+            fill={score === null ? "var(--ink-4)" : "var(--accent)"}
+          />
         </g>
       ))}
     </svg>

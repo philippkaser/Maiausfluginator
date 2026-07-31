@@ -10,6 +10,32 @@ const hostname = process.env.HOST ?? "0.0.0.0";
 
 if (process.env.SKIP_SEED !== "1") seedRestaurants();
 
+/**
+ * The display serif, served from disk.
+ *
+ * Bun's bundler would happily take these over if the stylesheet referenced them,
+ * but it inlines fonts as data URIs — see the note in `index.html`. So the
+ * @font-face lives in the HTML head and the files are served here, where we can
+ * also set a cache header worth having. A fixed map rather than a path parameter
+ * keeps the filesystem out of the URL.
+ */
+const FONT_DIR = `${import.meta.dir}/../client/assets/fonts`;
+const FONTS = new Set(["fraunces-latin.woff2", "fraunces-latin-ext.woff2"]);
+
+function serveFont(request: Request): Response {
+  const name = new URL(request.url).pathname.slice("/fonts/".length);
+  if (!FONTS.has(name)) return new Response("Not found", { status: 404 });
+
+  return new Response(Bun.file(`${FONT_DIR}/${name}`), {
+    headers: {
+      "Content-Type": "font/woff2",
+      // The name never changes, but neither does the file: a new cut of the
+      // typeface would arrive under a new name.
+      "Cache-Control": "public, max-age=31536000, immutable",
+    },
+  });
+}
+
 function start() {
   try {
     return Bun.serve({
@@ -20,7 +46,9 @@ function start() {
       maxRequestBodySize: 15 * 1024 * 1024,
       routes: {
         ...apiRoutes,
-        // Everything else is the single-page app.
+        "/fonts/:file": serveFont,
+        // Everything else is the single-page app: Bun serves index.html as a
+        // route and bundles the client behind it.
         "/*": index,
       },
     });

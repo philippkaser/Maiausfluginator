@@ -1,108 +1,239 @@
-import { Backdrop } from "./components/Backdrop.tsx";
-import { Avatar, Mark, Spinner } from "./components/ui.tsx";
-import { Link, useRouter } from "./lib/router.tsx";
-import { useSession } from "./lib/store.tsx";
-import { Admin } from "./pages/Admin.tsx";
-import { Gate } from "./pages/Gate.tsx";
-import { Members } from "./pages/Members.tsx";
-import { NewTrip } from "./pages/NewTrip.tsx";
-import { Ranking } from "./pages/Ranking.tsx";
-import { TripPage } from "./pages/TripPage.tsx";
+/**
+ * The shell.
+ *
+ * Three sections and two pages. The Rangliste is the results, Ausflüge is the
+ * browsable season, Runde is the people — and everything that is a form, a
+ * setting or a chore is a sheet on top of whichever of those you were reading.
+ * The old version had six flat pages, one of them called "Eintragen", which
+ * meant navigating away from the ranking in order to add something to it.
+ */
 
-const NAV = [
-  { to: "/", label: "Rangliste" },
-  { to: "/neu", label: "Eintragen" },
-  { to: "/mitglieder", label: "Mitglieder" },
+import { useRef, useState } from "react";
+
+import { Frost } from "./components/Frost.tsx";
+import { Ground } from "./components/Ground.tsx";
+import { Sheet } from "./components/Sheet.tsx";
+import { Avatar, Mark, SegmentedNav, Spinner } from "./components/ui.tsx";
+import { api } from "./lib/api.ts";
+import { SeasonProvider } from "./lib/data.tsx";
+import { useScrollProgress } from "./lib/motion.ts";
+import { Link, useRouter } from "./lib/router.tsx";
+import { useSession, useToast } from "./lib/store.tsx";
+import { Ausfluege } from "./pages/Ausfluege.tsx";
+import { Gate } from "./pages/Gate.tsx";
+import { Rangliste } from "./pages/Rangliste.tsx";
+import { Runde } from "./pages/Runde.tsx";
+import { TripPage } from "./pages/TripPage.tsx";
+import { AdminSheet } from "./sheets/AdminSheet.tsx";
+import { NewTripSheet } from "./sheets/NewTripSheet.tsx";
+
+type SectionId = "/" | "/ausfluege" | "/runde";
+
+const SECTIONS: { value: SectionId; label: string; title: string }[] = [
+  { value: "/", label: "Rangliste", title: "Der Mai-Score, nach deiner Gewichtung" },
+  { value: "/ausfluege", label: "Ausflüge", title: "Alle Ziele, mit Fotos und Radar" },
+  { value: "/runde", label: "Runde", title: "Wer bewertet wie — und die Auszeichnungen" },
 ];
 
-function Topbar() {
-  const { me, signOut } = useSession();
-  const { path } = useRouter();
+/** Which section a path belongs to. A single trip belongs to Ausflüge. */
+function sectionFor(path: string): SectionId {
+  if (path.startsWith("/ausflug/") || path.startsWith("/ausfluege")) return "/ausfluege";
+  if (path.startsWith("/runde")) return "/runde";
+  return "/";
+}
 
-  const links = me?.isAdmin ? [...NAV, { to: "/verwaltung", label: "Verwaltung" }] : NAV;
+type OpenSheet = "neu" | "verwaltung" | "konto" | null;
+
+/**
+ * The dock. Only exists below 760px, where the rail's middle is too narrow for
+ * three labels and a thumb cannot reach the top of the screen anyway.
+ *
+ * It renders after <main> so the tab order matches the visual order: on a phone
+ * the sections are at the bottom of the screen, and being focused before the
+ * page content would put the navigation somewhere the eye is not.
+ */
+function Dock() {
+  const { path } = useRouter();
+  return (
+    <div className="dock">
+      <SegmentedNav current={sectionFor(path)} options={SECTIONS} label="Bereich" block />
+    </div>
+  );
+}
+
+function Rail({ onOpen }: { onOpen: (sheet: OpenSheet) => void }) {
+  const { me } = useSession();
+  const { path } = useRouter();
+  const rail = useRef<HTMLElement | null>(null);
+
+  // Condenses the rail and drives the reading-progress hairline. Written
+  // straight to the element, so scrolling never renders React.
+  useScrollProgress(rail);
 
   return (
-    <header className="topbar">
-      <div className="topbar__inner">
-        <Link to="/" className="brand">
-          <Mark />
+    <header className="rail" ref={rail}>
+      <span className="rail__progress" aria-hidden="true" />
+      <div className="rail__inner">
+        <Link to="/" className="brand" aria-label="Maiausfluginator, zur Rangliste">
+          <Mark size={22} />
           <span className="brand__title">Maiausfluginator</span>
         </Link>
 
-        <nav className="nav">
-          {links.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className="nav__link"
-              aria-current={
-                link.to === "/" ? (path === "/" ? "page" : undefined) : path.startsWith(link.to) ? "page" : undefined
-              }
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="rail__mid">
+          <SegmentedNav current={sectionFor(path)} options={SECTIONS} label="Bereich" bare />
+        </div>
 
-        {me && (
-          <div className="topbar__me">
-            <Avatar name={me.displayName} hue={me.hue} />
-            <button
-              type="button"
-              className="btn btn--quiet btn--sm"
-              onClick={() => void signOut()}
-              title={`Angemeldet als ${me.displayName}`}
-            >
-              Abmelden
-            </button>
-          </div>
-        )}
+        <div className="rail__end">
+          <button type="button" className="btn btn--sm" onClick={() => onOpen("neu")}>
+            Eintragen
+          </button>
+          <button
+            type="button"
+            className="rail__me"
+            onClick={() => onOpen("konto")}
+            aria-label={`Konto von ${me?.displayName ?? "dir"}`}
+            title={me ? `Angemeldet als ${me.displayName}` : undefined}
+          >
+            {me && <Avatar name={me.displayName} hue={me.hue} size="sm" />}
+          </button>
+        </div>
       </div>
     </header>
   );
 }
 
+/** Your own key. Shown once, and only if you ask for a new one. */
+function KeyRenewal() {
+  const toast = useToast();
+  const [key, setKey] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <div className="stack">
+      <div>
+        <strong>Dein Schlüssel</strong>
+        <p className="small dim">
+          Name und Schlüssel zusammen sind dein Login auf jedem weiteren Gerät. Verloren? Ein neuer
+          macht den alten sofort ungültig.
+        </p>
+      </div>
+
+      {key ? (
+        <div className="keycard">
+          <div className="field__label" style={{ marginBottom: 6 }}>
+            Nur jetzt sichtbar — notier ihn
+          </div>
+          <div className="keycard__code">{key}</div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={async () => {
+            if (!confirm("Neuen Schlüssel erzeugen? Der alte verfällt sofort.")) return;
+            setBusy(true);
+            try {
+              const result = await api.rotateKey();
+              setKey(result.personalKey);
+            } catch {
+              toast("Das hat nicht geklappt. Dein alter Schlüssel gilt weiter.", "error");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "Moment…" : "Schlüssel erneuern"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** The account sheet: who you are, your key, the admin door, and the way out. */
+function AccountSheet({ onClose, onAdmin }: { onClose: () => void; onAdmin: () => void }) {
+  const { me, signOut } = useSession();
+  if (!me) return null;
+
+  return (
+    <Sheet title="Dein Konto" description={me.displayName} onClose={onClose}>
+      <div className="stack stack--md">
+        <div className="row">
+          <Avatar name={me.displayName} hue={me.hue} size="lg" />
+          <div className="stack" style={{ gap: 2 }}>
+            <strong>{me.displayName}</strong>
+            <span className="small dim">
+              {me.handle}
+              {me.isAdmin && " · Verwaltung"}
+            </span>
+          </div>
+        </div>
+
+        <hr className="divider" />
+        <KeyRenewal />
+
+        {me.isAdmin && (
+          <>
+            <hr className="divider" />
+            <div className="stack">
+              <div>
+                <strong>Einladungen</strong>
+                <p className="small dim">Codes ausgeben und zurückziehen.</p>
+              </div>
+              <button type="button" className="btn" onClick={onAdmin}>
+                Verwaltung öffnen
+              </button>
+            </div>
+          </>
+        )}
+
+        <hr className="divider" />
+        <button type="button" className="btn btn--danger" onClick={() => void signOut()}>
+          Abmelden
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
 function Routes() {
   const { path } = useRouter();
-  const { me } = useSession();
 
-  const tripMatch = /^\/ausflug\/([^/]+)$/.exec(path);
-  if (tripMatch) return <TripPage tripId={tripMatch[1]!} />;
+  const trip = /^\/ausflug\/([^/]+)$/.exec(path);
+  if (trip) return <TripPage tripId={trip[1]!} />;
 
   switch (path) {
     case "/":
-      return <Ranking />;
-    case "/neu":
-      return <NewTrip />;
-    case "/mitglieder":
-      return <Members />;
-    case "/verwaltung":
-      return me?.isAdmin ? (
-        <Admin />
-      ) : (
-        <div className="card card--pad">
-          <h2>Nur für Admins</h2>
-          <p className="muted">Diese Seite ist der Verwaltung vorbehalten.</p>
-        </div>
-      );
+      return <Rangliste />;
+    case "/ausfluege":
+      return <Ausfluege />;
+    case "/runde":
+      return <Runde />;
     default:
       return (
-        <div className="card card--pad">
-          <h2>Seite nicht gefunden</h2>
-          <p className="muted">
-            Den Weg gibt es nicht. <Link to="/">Zurück zur Rangliste</Link>.
-          </p>
-        </div>
+        <Frost className="notfound">
+          <div className="empty">
+            <div className="empty__title">Diesen Weg gibt es nicht.</div>
+            <p className="small">
+              <Link to="/" className="link">
+                Zurück zur Rangliste
+              </Link>
+            </p>
+          </div>
+        </Frost>
       );
   }
 }
 
 export function App() {
   const { me, loading } = useSession();
+  const { path } = useRouter();
+  const [sheet, setSheet] = useState<OpenSheet>(null);
 
   return (
     <>
-      <Backdrop />
+      <Ground />
+
       {loading ? (
         <div className="center-screen">
           <Spinner label="Einen Moment…" />
@@ -110,12 +241,29 @@ export function App() {
       ) : !me ? (
         <Gate />
       ) : (
-        <>
-          <Topbar />
-          <main className="shell">
+        <SeasonProvider>
+          {/* A fixed rail means the first Tab lands on navigation every time.
+              This gives the keyboard a way straight to the content. */}
+          <a href="#inhalt" className="skip">
+            Zum Inhalt springen
+          </a>
+
+          <Rail onOpen={setSheet} />
+
+          {/* Keyed on the path so a section change remounts and replays the
+              reveal choreography rather than swapping content in place. */}
+          <main className="shell page-enter" id="inhalt" key={path}>
             <Routes />
           </main>
-        </>
+
+          <Dock />
+
+          {sheet === "neu" && <NewTripSheet onClose={() => setSheet(null)} />}
+          {sheet === "verwaltung" && <AdminSheet onClose={() => setSheet(null)} />}
+          {sheet === "konto" && (
+            <AccountSheet onClose={() => setSheet(null)} onAdmin={() => setSheet("verwaltung")} />
+          )}
+        </SeasonProvider>
       )}
     </>
   );

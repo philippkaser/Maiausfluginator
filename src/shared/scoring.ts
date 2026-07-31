@@ -187,10 +187,3 @@ export function rankKey(agg: TripAggregate, weights: Weights = DEFAULT_WEIGHTS):
   const confidence = agg.ratingCount / (agg.ratingCount + 2);
   return score * (0.85 + 0.15 * confidence);
 }
-
-export function scoreTone(score: number | null): "gold" | "green" | "blue" | "grey" {
-  if (score === null) return "grey";
-  if (score >= 85) return "gold";
-  if (score >= 70) return "green";
-  return "blue";
-}

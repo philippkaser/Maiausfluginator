@@ -1,6 +1,23 @@
+/**
+ * One Ausflug.
+ *
+ * The title photograph is the head of the page, with the facts on a frosted
+ * plate laid over it and the score at the top right. Then what the score is made
+ * of, then every voice with its comment, then the gallery.
+ *
+ * A trip without a photograph does not get a broken header: it gets a refracted
+ * glass panel instead, which is the same gesture in the material that is always
+ * available.
+ */
+
 import { useEffect, useState } from "react";
 
-import { api, ApiError } from "../lib/api.ts";
+import { Frost } from "../components/Frost.tsx";
+import { PhotoPanel } from "../components/PhotoPanel.tsx";
+import { Breakdown, ScoreNumeral } from "../components/Score.tsx";
+import { Avatar, Empty, Pane, Spinner, Tag } from "../components/ui.tsx";
+import { api, ApiError, photoUrl } from "../lib/api.ts";
+import { useSeason } from "../lib/data.tsx";
 import {
   formatDate,
   formatDecimal,
@@ -8,59 +25,69 @@ import {
   formatRelative,
   formatWeekday,
 } from "../lib/format.ts";
+import { useReveal } from "../lib/motion.ts";
 import { Link, useRouter } from "../lib/router.tsx";
 import { useSession, useStoredWeights, useToast } from "../lib/store.tsx";
+import { RatingSheet } from "../sheets/RatingSheet.tsx";
 import { scoreTrip } from "../../shared/scoring.ts";
-import { DIMENSION_LABELS, DIMENSIONS } from "../../shared/types.ts";
+import { DIMENSIONS, DIMENSION_LABELS } from "../../shared/types.ts";
 import type { TripDetail } from "../../shared/types.ts";
-import { PhotoPanel } from "../components/PhotoPanel.tsx";
-import { RatingForm } from "../components/RatingForm.tsx";
-import { Avatar, Bar, Empty, ScoreRing, Spinner, Tag } from "../components/ui.tsx";
+import { de1 } from "../../shared/num.ts";
 
 export function TripPage({ tripId }: { tripId: string }) {
   const { me, hq } = useSession();
   const { weights } = useStoredWeights();
-  const { navigate } = useRouter();
+  const { merge, forget } = useSeason();
+  const { navigate, search, setParam } = useRouter();
   const toast = useToast();
 
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [missing, setMissing] = useState(false);
 
+  // `?bewerten` makes "du hast noch 3 offen" a list of links rather than a list
+  // of things to click twice.
+  const rating = search.has("bewerten");
+  const reveal = useReveal([trip === null]);
+
   useEffect(() => {
-    let cancelled = false;
+    let live = true;
     setTrip(null);
     setMissing(false);
+
     api
       .trip(tripId)
       .then((data) => {
-        if (!cancelled) setTrip(data.trip);
+        if (live) setTrip(data.trip);
       })
       .catch((err) => {
-        if (cancelled) return;
+        if (!live) return;
         if (err instanceof ApiError && err.status === 404) setMissing(true);
-        else toast(err instanceof ApiError ? err.message : "Laden fehlgeschlagen", "error");
+        else toast(err instanceof ApiError ? err.message : "Der Ausflug lädt nicht.", "error");
       });
+
     return () => {
-      cancelled = true;
+      live = false;
     };
   }, [tripId, toast]);
 
   if (missing) {
     return (
-      <div className="card card--pad">
-        <Empty title="Diesen Ausflug gibt es nicht (mehr).">
-          <Link to="/" className="btn" style={{ marginTop: 12 }}>
-            Zur Rangliste
-          </Link>
+      <Pane>
+        <Empty title="Diesen Ausflug gibt es nicht mehr.">
+          <p className="small">
+            <Link to="/" className="link">
+              Zurück zur Rangliste
+            </Link>
+          </p>
         </Empty>
-      </div>
+      </Pane>
     );
   }
 
   if (!trip) {
     return (
       <div className="center-screen">
-        <Spinner label="Wird geladen…" />
+        <Spinner label="Wird geholt…" />
       </div>
     );
   }
@@ -69,22 +96,80 @@ export function TripPage({ tripId }: { tripId: string }) {
   const { restaurant, aggregate: agg } = trip;
   const canEdit = me?.isAdmin || me?.id === trip.createdBy;
 
+  /** Keep the trip page and the season list in step after any change. */
+  function apply(next: TripDetail) {
+    setTrip(next);
+    merge(next);
+  }
+
   async function removeTrip() {
     if (!confirm("Diesen Ausflug samt Bewertungen und Fotos löschen?")) return;
     try {
       await api.deleteTrip(tripId);
+      forget(tripId);
       toast("Ausflug gelöscht.");
-      navigate("/");
+      navigate("/ausfluege");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "Löschen fehlgeschlagen", "error");
+      toast(err instanceof ApiError ? err.message : "Das ließ sich nicht löschen.", "error");
     }
   }
 
+  const facts = (
+    <div className="row row--tight">
+      <Tag title={`Einfache Strecke ab ${hq.label}`}>
+        {formatDecimal(restaurant.distanceKm)} km ab HQ
+      </Tag>
+      <Tag title="Einfache Fahrzeit">{formatMinutes(restaurant.travelMin)} Fahrt</Tag>
+      {agg.waitMedian !== null && (
+        <Tag title={`Median aus ${agg.waitCount} Angaben`}>
+          {Math.round(agg.waitMedian)} min aufs Essen
+        </Tag>
+      )}
+      {restaurant.travelSource === "estimated" && (
+        <Tag title="Aus den Koordinaten gerechnet, nicht nachgemessen">Anfahrt geschätzt</Tag>
+      )}
+      {restaurant.website && (
+        <a
+          className="tag"
+          href={restaurant.website}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          Website ↗
+        </a>
+      )}
+    </div>
+  );
+
+  const head = (
+    <div className="thead__plate">
+      <div className="stack" style={{ gap: 10 }}>
+        <span className="eyebrow">
+          {formatWeekday(trip.tripDate)}, {formatDate(trip.tripDate)}
+        </span>
+        <h1>{restaurant.name}</h1>
+        <p className="muted">
+          {[restaurant.town, restaurant.cuisine, restaurant.address].filter(Boolean).join(" · ")}
+        </p>
+        {facts}
+      </div>
+
+      <div className="thead__score">
+        <ScoreNumeral score={breakdown.score} countKey={trip.id} size="md" />
+        <span className="small dim">
+          {agg.ratingCount === 0
+            ? "noch keine Stimme"
+            : `${agg.ratingCount} ${agg.ratingCount === 1 ? "Stimme" : "Stimmen"}`}
+        </span>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="stack stack--lg fade-in">
+    <div className="stack stack--lg" ref={reveal}>
       <div className="row row--between">
-        <Link to="/" className="btn btn--quiet btn--sm">
-          ← Rangliste
+        <Link to="/ausfluege" className="btn btn--quiet btn--sm">
+          ← Alle Ausflüge
         </Link>
         {canEdit && (
           <button type="button" className="btn btn--danger btn--sm" onClick={removeTrip}>
@@ -93,143 +178,155 @@ export function TripPage({ tripId }: { tripId: string }) {
         )}
       </div>
 
-      <header className="row row--between" style={{ alignItems: "flex-start", gap: 28 }}>
-        <div style={{ minWidth: 0, flex: "1 1 340px" }}>
-          <p className="small dim" style={{ marginBottom: 6 }}>
-            {formatWeekday(trip.tripDate)}, {formatDate(trip.tripDate)}
-          </p>
-          <h1>{restaurant.name}</h1>
-          <p className="muted" style={{ margin: "8px 0 16px" }}>
-            {[restaurant.town, restaurant.cuisine, restaurant.address].filter(Boolean).join(" · ")}
-          </p>
-
-          <div className="row row--tight">
-            <Tag title={`Einfache Strecke ab ${hq.label}`}>
-              {formatDecimal(restaurant.distanceKm)} km ab HQ
-            </Tag>
-            <Tag title="Einfache Fahrzeit">{formatMinutes(restaurant.travelMin)} Fahrt</Tag>
-            {agg.waitMedian !== null && (
-              <Tag title={`${agg.waitCount} Angaben`}>
-                {Math.round(agg.waitMedian)} min aufs Essen
-              </Tag>
-            )}
-            {restaurant.travelSource === "estimated" && (
-              <Tag title="Aus den Koordinaten geschätzt, nicht nachgemessen">Anfahrt geschätzt</Tag>
-            )}
-            {restaurant.website && (
-              <a className="tag" href={restaurant.website} target="_blank" rel="noreferrer noopener">
-                Website ↗
-              </a>
-            )}
-          </div>
-
-          {trip.notes && <p style={{ marginTop: 18, color: "var(--label-2)" }}>{trip.notes}</p>}
-
-          <p className="small dim" style={{ marginTop: 16 }}>
-            Eingetragen von {trip.createdByName} · {formatRelative(trip.createdAt)}
-            {trip.title !== restaurant.name ? ` · „${trip.title}“` : ""}
-          </p>
-        </div>
-
-        <div className="stack" style={{ alignItems: "center", gap: 10, flex: "0 0 auto" }}>
-          <ScoreRing score={breakdown.score} size={124} />
-          <div className="small dim" style={{ textAlign: "center" }}>
-            {agg.ratingCount === 0
-              ? "Noch keine Bewertung"
-              : `${agg.ratingCount} ${agg.ratingCount === 1 ? "Stimme" : "Stimmen"} · ${agg.photoCount} Fotos`}
-          </div>
-        </div>
-      </header>
+      {/* The head. With a photograph it is a picture with a plate on it; without
+          one it is refracted glass. Same gesture, different material. */}
+      {trip.coverPhotoId ? (
+        <header className="thead" data-reveal>
+          <img
+            className="thead__photo"
+            src={photoUrl(trip.coverPhotoId)}
+            alt=""
+            decoding="async"
+          />
+          <div className="thead__scrim" aria-hidden="true" />
+          {head}
+        </header>
+      ) : (
+        <Frost className="thead thead--bare">
+          <div data-reveal>{head}</div>
+        </Frost>
+      )}
 
       <div className="split">
-        <div className="stack">
-          <section className="card card--pad">
+        <div className="stack stack--md">
+          <Pane as="section" data-reveal>
             <div className="section__head">
-              <h2>Aufschlüsselung</h2>
+              <div className="stack" style={{ gap: 4 }}>
+                <span className="eyebrow">Sieben Komponenten</span>
+                <h2>Woraus sich das rechnet</h2>
+              </div>
             </div>
-            <div className="bars">
-              {breakdown.parts.map((part) => (
-                <Bar
-                  key={part.component}
-                  label={`${part.label} · ${Math.round(part.effectiveWeight * 100)} %`}
-                  value={part.value}
-                  detail={part.detail}
-                />
-              ))}
-            </div>
-            {breakdown.partial && (
-              <p className="small dim" style={{ marginTop: 14 }}>
-                Für einzelne Komponenten fehlen Daten — die übrigen Gewichte wurden hochgerechnet.
-              </p>
-            )}
-          </section>
+            <Breakdown breakdown={breakdown} />
+          </Pane>
 
-          <section className="card card--pad">
+          <Pane as="section" data-reveal>
             <div className="section__head">
-              <h2>
-                {trip.ratings.length} {trip.ratings.length === 1 ? "Bewertung" : "Bewertungen"}
-              </h2>
+              <div className="stack" style={{ gap: 4 }}>
+                <span className="eyebrow">Die Runde sagt</span>
+                <h2>
+                  {trip.ratings.length}{" "}
+                  {trip.ratings.length === 1 ? "Stimme" : "Stimmen"}
+                </h2>
+              </div>
             </div>
 
             {trip.ratings.length === 0 ? (
               <Empty title="Noch hat niemand etwas gesagt.">
-                <p className="small">Sei die erste Stimme — das Formular ist gleich daneben.</p>
+                <p className="small">Sei die erste Stimme.</p>
               </Empty>
             ) : (
-              <div className="reviews">
-                {trip.ratings.map((rating) => (
-                  <article key={rating.id} className="review">
-                    <div className="review__head">
-                      <Avatar name={rating.userName} hue={rating.userHue} size="sm" />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 500 }}>
-                          {rating.userName}
-                          {rating.userId === me?.id && <span className="dim small"> · du</span>}
-                        </div>
-                        <div className="dim small">{formatRelative(rating.updatedAt)}</div>
-                      </div>
-                      <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                        <div className="rate__score">
-                          {formatDecimal(
-                            DIMENSIONS.reduce((sum, dimension) => sum + rating[dimension], 0) /
-                              DIMENSIONS.length,
-                          )}
-                        </div>
-                        <div className="dim small">Schnitt</div>
-                      </div>
-                    </div>
+              <div className="voices">
+                {trip.ratings.map((entry) => {
+                  const mean =
+                    DIMENSIONS.reduce((sum, dimension) => sum + entry[dimension], 0) /
+                    DIMENSIONS.length;
 
-                    <div className="review__scores">
-                      {DIMENSIONS.map((dimension) => (
-                        <span key={dimension}>
-                          {DIMENSION_LABELS[dimension]} <b>{rating[dimension]}</b>
-                        </span>
-                      ))}
-                      {rating.waitMinutes !== null && (
-                        <span>
-                          Wartezeit <b>{rating.waitMinutes} min</b>
-                        </span>
-                      )}
-                    </div>
+                  return (
+                    <article key={entry.id} className="voice">
+                      <div className="voice__head">
+                        <Avatar name={entry.userName} hue={entry.userHue} size="sm" />
+                        <div style={{ minWidth: 0 }}>
+                          <div className="voice__who">
+                            {entry.userName}
+                            {entry.userId === me?.id && <span className="dim small"> · du</span>}
+                          </div>
+                          <div className="dim small">{formatRelative(entry.updatedAt)}</div>
+                        </div>
+                        <div className="voice__mean">
+                          <span className="tnum">{de1(mean)}</span>
+                          <span className="dim small">Schnitt</span>
+                        </div>
+                      </div>
 
-                    {rating.comment && <p className="quote">{rating.comment}</p>}
-                  </article>
-                ))}
+                      <div className="voice__scores">
+                        {DIMENSIONS.map((dimension) => (
+                          <span key={dimension}>
+                            {DIMENSION_LABELS[dimension]} <b className="tnum">{entry[dimension]}</b>
+                          </span>
+                        ))}
+                        {entry.waitMinutes !== null && (
+                          <span>
+                            Wartezeit <b className="tnum">{entry.waitMinutes} min</b>
+                          </span>
+                        )}
+                      </div>
+
+                      {entry.comment && <p className="quote">{entry.comment}</p>}
+                    </article>
+                  );
+                })}
               </div>
             )}
-          </section>
+          </Pane>
 
-          <PhotoPanel
-            tripId={trip.id}
-            photos={trip.photos}
-            onChange={(photos) => setTrip((current) => (current ? { ...current, photos } : current))}
-          />
+          <div data-reveal>
+            <PhotoPanel
+              tripId={trip.id}
+              photos={trip.photos}
+              onChange={(photos) =>
+                setTrip((current) => (current ? { ...current, photos } : current))
+              }
+            />
+          </div>
         </div>
 
-        <section className="card card--pad" style={{ position: "sticky", top: 84 }}>
-          <RatingForm trip={trip} onSaved={setTrip} />
-        </section>
+        <aside className="tside" data-reveal>
+          <Pane>
+            <div className="stack">
+              <div className="stack" style={{ gap: 4 }}>
+                <span className="eyebrow">Deine Stimme</span>
+                <h2>{trip.myRating ? "Du warst schon dran" : "Wie war es?"}</h2>
+              </div>
+
+              <p className="small muted">
+                {trip.myRating
+                  ? "Du kannst sie jederzeit ändern — eine Stimme pro Person und Ausflug."
+                  : "Fünf Regler, die Wartezeit und ein Satz dazu. Dauert eine Minute."}
+              </p>
+
+              <button
+                type="button"
+                className="btn btn--primary btn--block"
+                onClick={() => setParam("bewerten", "1")}
+              >
+                {trip.myRating ? "Bewertung ansehen" : "Jetzt bewerten"}
+              </button>
+            </div>
+          </Pane>
+
+          {trip.notes && (
+            <Pane tone="quiet">
+              <div className="stack" style={{ gap: 6 }}>
+                <span className="eyebrow">Notiz</span>
+                <p className="muted">{trip.notes}</p>
+              </div>
+            </Pane>
+          )}
+
+          <p className="small dim">
+            Eingetragen von {trip.createdByName} · {formatRelative(trip.createdAt)}
+            {trip.title !== restaurant.name && ` · „${trip.title}“`}
+          </p>
+        </aside>
       </div>
+
+      {rating && (
+        <RatingSheet
+          trip={trip}
+          onSaved={apply}
+          onClose={() => setParam("bewerten", null)}
+        />
+      )}
     </div>
   );
 }

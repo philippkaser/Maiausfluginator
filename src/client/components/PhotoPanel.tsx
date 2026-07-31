@@ -1,10 +1,24 @@
+/**
+ * Food-Pics.
+ *
+ * Drag and drop, captions, likes, and a lightbox. The photographs are the only
+ * place in this design where colour arrives uninvited, so they get a plain glass
+ * frame and no treatment: a plate of Schlutzkrapfen does not need a gradient over
+ * it.
+ *
+ * Images are only served to signed-in members — see the photo route on the
+ * server. That is why there is no thumbnail cache and no CDN: the whole point is
+ * that these do not leave the building.
+ */
+
 import { useEffect, useRef, useState } from "react";
 
+import { useFocusTrap, useScrollLock } from "../lib/a11y.ts";
 import { api, ApiError, photoUrl } from "../lib/api.ts";
 import { formatRelative } from "../lib/format.ts";
 import { useSession, useToast } from "../lib/store.tsx";
 import type { Photo } from "../../shared/types.ts";
-import { Avatar, Empty } from "./ui.tsx";
+import { Avatar, Empty, Pane } from "./ui.tsx";
 
 const MAX_MB = 12;
 
@@ -19,7 +33,7 @@ export function PhotoPanel({
 }) {
   const { me } = useSession();
   const toast = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(0);
   const [caption, setCaption] = useState("");
@@ -31,6 +45,7 @@ export function PhotoPanel({
 
     setUploading(list.length);
     const uploaded: Photo[] = [];
+
     for (const file of list) {
       if (file.size > MAX_MB * 1024 * 1024) {
         toast(`${file.name} ist größer als ${MAX_MB} MB.`, "error");
@@ -40,30 +55,37 @@ export function PhotoPanel({
         const result = await api.uploadPhoto(tripId, file, caption);
         uploaded.push(result.photo);
       } catch (err) {
-        toast(err instanceof ApiError ? err.message : `${file.name} konnte nicht hochgeladen werden`, "error");
+        toast(
+          err instanceof ApiError ? err.message : `${file.name} ließ sich nicht hochladen.`,
+          "error",
+        );
       }
     }
+
     setUploading(0);
     setCaption("");
     if (uploaded.length > 0) {
       onChange([...uploaded, ...photos]);
-      toast(`${uploaded.length} ${uploaded.length === 1 ? "Foto" : "Fotos"} hochgeladen.`, "success");
+      toast(`${uploaded.length} ${uploaded.length === 1 ? "Foto" : "Fotos"} da.`, "success");
     }
   }
 
   async function toggleLike(photo: Photo) {
-    // Optimistic - the like count is not worth a spinner.
-    const optimistic = photos.map((p) =>
-      p.id === photo.id
-        ? { ...p, likedByMe: !p.likedByMe, likes: p.likes + (p.likedByMe ? -1 : 1) }
-        : p,
+    // Optimistic — a like is not worth a spinner.
+    const optimistic = photos.map((entry) =>
+      entry.id === photo.id
+        ? { ...entry, likedByMe: !entry.likedByMe, likes: entry.likes + (entry.likedByMe ? -1 : 1) }
+        : entry,
     );
     onChange(optimistic);
+
     try {
       const result = await api.likePhoto(photo.id);
       onChange(
-        optimistic.map((p) =>
-          p.id === photo.id ? { ...p, likes: result.likes, likedByMe: result.likedByMe } : p,
+        optimistic.map((entry) =>
+          entry.id === photo.id
+            ? { ...entry, likes: result.likes, likedByMe: result.likedByMe }
+            : entry,
         ),
       );
     } catch {
@@ -76,43 +98,31 @@ export function PhotoPanel({
     if (!confirm("Foto löschen?")) return;
     try {
       await api.deletePhoto(photo.id);
-      onChange(photos.filter((p) => p.id !== photo.id));
+      onChange(photos.filter((entry) => entry.id !== photo.id));
       setLightbox(null);
       toast("Foto gelöscht.");
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : "Löschen fehlgeschlagen", "error");
+      toast(err instanceof ApiError ? err.message : "Das ließ sich nicht löschen.", "error");
     }
   }
 
-  useEffect(() => {
-    if (!lightbox) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setLightbox(null);
-      if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-        const index = photos.findIndex((p) => p.id === lightbox.id);
-        const next = event.key === "ArrowRight" ? index + 1 : index - 1;
-        const target = photos[(next + photos.length) % photos.length];
-        if (target) setLightbox(target);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [lightbox, photos]);
-
   return (
-    <section className="card card--pad">
+    <Pane as="section">
       <div className="section__head">
-        <h2>
-          {photos.length} {photos.length === 1 ? "Foto" : "Fotos"}
-        </h2>
-        <button type="button" className="btn btn--sm" onClick={() => inputRef.current?.click()}>
+        <div className="stack" style={{ gap: 4 }}>
+          <span className="eyebrow">Food-Pics</span>
+          <h2>
+            {photos.length} {photos.length === 1 ? "Foto" : "Fotos"}
+          </h2>
+        </div>
+        <button type="button" className="btn btn--sm" onClick={() => picker.current?.click()}>
           Foto hinzufügen
         </button>
       </div>
 
       {photos.length === 0 ? (
         <Empty title="Noch kein Teller dokumentiert.">
-          <p className="small">Zieh Bilder hierher oder nutz den Button oben.</p>
+          <p className="small">Zieh Bilder hierher oder nimm den Knopf oben.</p>
         </Empty>
       ) : (
         <div className="gallery">
@@ -120,26 +130,26 @@ export function PhotoPanel({
             <button
               key={photo.id}
               type="button"
-              className="shot"
+              className="shot on-photo"
               onClick={() => setLightbox(photo)}
-              aria-label={photo.caption ?? `Foto von ${photo.userName}`}
+              aria-label={
+                photo.caption
+                  ? `${photo.caption}, Foto von ${photo.userName}`
+                  : `Foto von ${photo.userName}`
+              }
             >
               <img
                 src={photoUrl(photo.id)}
-                alt={photo.caption ?? `Foto von ${photo.userName}`}
+                alt=""
                 loading="lazy"
                 decoding="async"
                 width={photo.width ?? undefined}
                 height={photo.height ?? undefined}
               />
-              <span className="shot__overlay">
+              <span className="shot__bar" aria-hidden="true">
                 <Avatar name={photo.userName} hue={photo.userHue} size="sm" />
-                <span
-                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                >
-                  {photo.caption ?? photo.userName}
-                </span>
-                {photo.likes > 0 && <span style={{ marginLeft: "auto" }}>♥ {photo.likes}</span>}
+                <span className="shot__caption">{photo.caption ?? photo.userName}</span>
+                {photo.likes > 0 && <span className="shot__likes">♥ {photo.likes}</span>}
               </span>
             </button>
           ))}
@@ -149,8 +159,16 @@ export function PhotoPanel({
       <div
         className="dropzone"
         data-active={dragging}
-        style={{ marginTop: 16 }}
-        onClick={() => inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        aria-label="Fotos auswählen"
+        onClick={() => picker.current?.click()}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            picker.current?.click();
+          }
+        }}
         onDragOver={(event) => {
           event.preventDefault();
           setDragging(true);
@@ -163,27 +181,29 @@ export function PhotoPanel({
         }}
       >
         {uploading > 0 ? (
-          <span className="dim small">
+          <span className="small dim">
             {uploading} {uploading === 1 ? "Bild wird" : "Bilder werden"} hochgeladen…
           </span>
         ) : (
-          <span className="dim small">
-            Bilder hierher ziehen oder klicken · JPEG, PNG, WebP, HEIC · max. {MAX_MB} MB
+          <span className="small dim">
+            Bilder hierher ziehen oder klicken · JPEG, PNG, WebP, HEIC · bis {MAX_MB} MB
           </span>
         )}
       </div>
 
-      <input
-        className="input"
-        style={{ marginTop: 10 }}
-        placeholder="Bildtext für den nächsten Upload (optional)"
-        value={caption}
-        maxLength={200}
-        onChange={(event) => setCaption(event.target.value)}
-      />
+      <label className="field" style={{ marginTop: 12 }}>
+        <span className="field__label">Bildtext für den nächsten Upload</span>
+        <input
+          className="input"
+          placeholder="Optional — „der Kaiserschmarrn, der alles entschied“"
+          value={caption}
+          maxLength={200}
+          onChange={(event) => setCaption(event.target.value)}
+        />
+      </label>
 
       <input
-        ref={inputRef}
+        ref={picker}
         type="file"
         accept="image/*"
         multiple
@@ -195,53 +215,108 @@ export function PhotoPanel({
       />
 
       {lightbox && (
-        <div
-          className="overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Foto"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setLightbox(null);
-          }}
-        >
-          <div className="stack stack--sm" style={{ alignItems: "center" }}>
-            <img className="lightbox__img" src={photoUrl(lightbox.id)} alt={lightbox.caption ?? ""} />
-            <div className="lightbox__bar">
-              <Avatar name={lightbox.userName} hue={lightbox.userHue} size="sm" />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: "0.88rem" }}>{lightbox.caption ?? lightbox.userName}</div>
-                <div className="muted small">
-                  {lightbox.userName} · {formatRelative(lightbox.createdAt)}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="likebtn"
-                aria-pressed={lightbox.likedByMe}
-                style={{ marginLeft: "auto" }}
-                onClick={() => {
-                  void toggleLike(lightbox);
-                  setLightbox({
-                    ...lightbox,
-                    likedByMe: !lightbox.likedByMe,
-                    likes: lightbox.likes + (lightbox.likedByMe ? -1 : 1),
-                  });
-                }}
-              >
-                ♥ {lightbox.likes}
-              </button>
-              {(me?.id === lightbox.userId || me?.isAdmin) && (
-                <button type="button" className="btn btn--quiet btn--sm" onClick={() => remove(lightbox)}>
-                  Löschen
-                </button>
-              )}
-              <button type="button" className="btn btn--quiet btn--sm" onClick={() => setLightbox(null)}>
-                Schließen
-              </button>
+        <Lightbox
+          photo={lightbox}
+          photos={photos}
+          canDelete={me?.id === lightbox.userId || me?.isAdmin === true}
+          onShow={setLightbox}
+          onClose={() => setLightbox(null)}
+          onLike={toggleLike}
+          onDelete={remove}
+        />
+      )}
+    </Pane>
+  );
+}
+
+/**
+ * The lightbox. The same keyboard contract as a sheet — focus in, trapped,
+ * handed back — but the frame here is the photograph itself rather than a pane,
+ * so it is not one. Arrow keys walk the gallery, which a sheet has no notion of.
+ */
+function Lightbox({
+  photo,
+  photos,
+  canDelete,
+  onShow,
+  onClose,
+  onLike,
+  onDelete,
+}: {
+  photo: Photo;
+  photos: Photo[];
+  canDelete: boolean;
+  onShow: (photo: Photo) => void;
+  onClose: () => void;
+  onLike: (photo: Photo) => void;
+  onDelete: (photo: Photo) => void;
+}) {
+  const frame = useRef<HTMLDivElement | null>(null);
+
+  useFocusTrap(frame);
+  useScrollLock();
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+
+      const index = photos.findIndex((entry) => entry.id === photo.id);
+      const step = event.key === "ArrowRight" ? 1 : -1;
+      const next = photos[(index + step + photos.length) % photos.length];
+      if (next) onShow(next);
+    };
+
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [photo, photos, onShow, onClose]);
+
+  return (
+    <div
+      className="lightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-label={photo.caption ?? `Foto von ${photo.userName}`}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="lightbox__frame" ref={frame} tabIndex={-1}>
+        <img className="lightbox__img" src={photoUrl(photo.id)} alt={photo.caption ?? ""} />
+
+        <div className="lightbox__bar">
+          <Avatar name={photo.userName} hue={photo.userHue} size="sm" />
+          <div style={{ minWidth: 0 }}>
+            <div className="small">{photo.caption ?? photo.userName}</div>
+            <div className="dim small">
+              {photo.userName} · {formatRelative(photo.createdAt)}
             </div>
           </div>
+
+          <button
+            type="button"
+            className="likebtn"
+            aria-pressed={photo.likedByMe}
+            aria-label={photo.likedByMe ? "Like zurücknehmen" : "Gefällt mir"}
+            style={{ marginLeft: "auto" }}
+            onClick={() => onLike(photo)}
+          >
+            ♥ <span className="tnum">{photo.likes}</span>
+          </button>
+
+          {canDelete && (
+            <button type="button" className="btn btn--danger btn--sm" onClick={() => onDelete(photo)}>
+              Löschen
+            </button>
+          )}
+          <button type="button" className="btn btn--quiet btn--sm" onClick={onClose}>
+            Schließen
+          </button>
         </div>
-      )}
-    </section>
+      </div>
+    </div>
   );
 }
