@@ -36,7 +36,8 @@ die eigenen offenen Bewertungen.
 
 **Ausflüge** — die Saison zum Durchsehen. Ein Raster aus Fotos, Filter (zuletzt, beste,
 um die Ecke, mit Karte, ungehört) und das **Radar**: alle Ziele nach echter Himmelsrichtung und
-Entfernung ab HQ, gerechnet im Haus, ohne Kartendienst von außen.
+Entfernung ab HQ, aus den Koordinaten im Haus gezeichnet — kein Kartenbild, keine Kachel,
+nur Richtung und Weite.
 
 **Runde** — die Leute. Die **Auszeichnungen** der Saison als Urkunden gesetzt (bester
 Teller, Küchen-Blitz, Geduldsprobe, Expedition, Diskussionsstoff) und die Mitgliederliste
@@ -47,10 +48,19 @@ Milchglasplatte darüber, die Aufschlüsselung des Scores, jede Stimme mit ihrem
 die Fotogalerie.
 
 In Schubladen: **Bewerten** (fünf Regler, Wartezeit, Durst-Karte, Kommentar — eine Stimme
-pro Person und Ausflug, jederzeit änderbar), **Eintragen**, die **Gewichtung**, das eigene
-**Konto** samt Schlüssel und die **Verwaltung** der Einladungscodes. `?bewerten` an der Adresse
+pro Person und Ausflug, jederzeit änderbar), **Eintragen** (mit Karte, siehe unten), die
+**Gewichtung**, das eigene **Konto** samt Schlüssel und die **Verwaltung** — Einladungscodes
+und neue Schlüssel für die, die ihren verlegt haben. `?bewerten` an der Adresse
 eines Ausflugs öffnet das Bewertungsformular direkt — „du hast noch drei offen" ist damit
 eine Liste von Links.
+
+**Die Karte.** Ein Lokal, das noch nicht in der Liste steht, wird über eine Karte
+eingetragen und nicht mehr über Zahlen: Namen tippen, Treffer wählen — Ort, Adresse,
+Küche, Website und Koordinaten kommen mit —, oder gleich den Punkt antippen. Entfernung
+und Fahrzeit ab HQ stehen unter der Karte und ändern sich mit dem Stift, gerechnet mit
+demselben Code, den der Server beim Speichern benutzt (`shared/geo.ts`). Die
+Koordinatenfelder gibt es weiterhin, eine Schublade tiefer: für eine Hütte, die keine
+Vermessung kennt, und für den, der die echte Fahrzeit gefahren hat.
 
 **Durst-Karte.** Beim Bewerten wird mitgefragt, ob die Karte angenommen wurde — ja, nein
 oder nicht probiert. Zehn Euro weniger auf die Rechnung sind der größte einzelne Hebel auf
@@ -111,12 +121,41 @@ bun run start
 
 Es gibt weder E-Mail-Versand noch Passwörter. Wer einen Einladungscode einlöst, wählt seinen
 Namen und bekommt **einmalig** einen persönlichen Schlüssel angezeigt (`XXXX-XXXX-XXXX-XXXX`).
-Name plus Schlüssel ist das Login auf jedem weiteren Gerät. Verloren? Im eigenen **Konto**
-(Avatar rechts oben) → *Schlüssel erneuern* gibt es einen neuen, der alte verfällt sofort.
+Name plus Schlüssel ist das Login auf jedem weiteren Gerät. Solange man noch angemeldet ist:
+im eigenen **Konto** (Avatar rechts oben) → *Schlüssel erneuern* gibt es einen neuen, der alte
+verfällt sofort.
 
 Gespeichert wird nur ein Argon2id-Hash des Schlüssels. Sessions sind zufällige Tokens, von denen
 in der Datenbank ebenfalls nur der SHA-256 liegt; das Cookie ist `HttpOnly` und `SameSite=Lax`.
 Hinter einem TLS-Proxy wird es automatisch `Secure` (oder erzwungen mit `FORCE_SECURE_COOKIES=1`).
+
+### Schlüssel weg, gar nicht mehr angemeldet
+
+Der häufigste Fall, und er braucht einen anderen Weg: es gibt keine Adresse, an die sich ein
+Link schicken ließe, und **nachsehen kann den Schlüssel niemand** — auch kein Admin, denn in
+der Datenbank liegt nur der Hash. Ein verlorener Schlüssel ist also nicht wiederherstellbar,
+er ist nur ersetzbar.
+
+Deshalb: ein Admin öffnet *Konto → Verwaltung*, drückt beim betreffenden Mitglied auf **Neuer
+Schlüssel** und liest den vor. Der alte verfällt dabei sofort und alle Geräte dieses Mitglieds
+werden abgemeldet — wer seinen Schlüssel verloren hat, weiß nicht, wer ihn gefunden hat.
+
+Das ist die eine Stelle, an der eine Person kurzzeitig Zugang zum Konto einer anderen
+verschaffen könnte, also wird sie nicht stillschweigend benutzt:
+
+- Wer den Schlüssel ausgestellt hat und wann, steht am Mitglied (`users.key_reset_at` /
+  `key_reset_by`) und ist in der Verwaltung sichtbar.
+- **Das Mitglied selbst sieht es auch**, im eigenen Konto: „Dein aktueller Schlüssel wurde
+  vor zwei Tagen von Philipp für dich ausgestellt." Ein Klick auf *Schlüssel erneuern* macht
+  daraus wieder einen, den nur eine Person kennt — und löscht damit auch den Hinweis.
+- Den eigenen Schlüssel kann ein Admin auf diesem Weg nicht erneuern; das gehört ins eigene
+  Konto, wo es die Session gleich mit erneuert statt sie wegzuwerfen.
+
+Die Alternative wäre gewesen, Schlüssel im Klartext zu speichern, damit ein Admin sie
+*ansehen* kann. Das ist dieselbe Bequemlichkeit für alle Beteiligten und ein dauerhaft
+lesbares Passwortverzeichnis als Preis. Ein ausgestellter Schlüssel ist die kleinere
+Befugnis: er wirkt einmal, er ist sichtbar protokolliert, und das Mitglied kann ihn
+zurücknehmen.
 
 ## Konfiguration
 
@@ -132,15 +171,19 @@ Alles optional:
 | `HQ_LABEL` | `Durst HQ Brixen` | Anzeigename des Startpunkts |
 | `FORCE_SECURE_COOKIES` | – | `1` erzwingt `Secure` auf dem Session-Cookie |
 | `SKIP_SEED` | – | `1` legt beim Start keine Beispiel-Lokale an |
+| `OSM_CONTACT` | – | Kontaktadresse im User-Agent Richtung OpenStreetMap (siehe unten) |
+| `TILE_URL` | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Woher die Kacheln kommen |
+| `NOMINATIM_URL` | `https://nominatim.openstreetmap.org` | Woher die Ortssuche kommt |
 
 Die HQ-Koordinaten sind eine Näherung für die Julius-Durst-Straße in Brixen. Wenn ihr ab einer
 anderen Tür messen wollt, einfach überschreiben.
 
 ## Daten
 
-Alles liegt in `data/`: `mai.sqlite` (WAL-Modus) und `data/uploads/` für die Fotos. Ein Backup
-ist ein Kopieren dieses Ordners. Löscht man einen Ausflug, verschwinden Bewertungen und Bilddateien
-mit ihm.
+Alles liegt in `data/`: `mai.sqlite` (WAL-Modus), `data/uploads/` für die Fotos und
+`data/tiles/` für die Kartenkacheln, die schon einmal geholt wurden. Ein Backup ist ein
+Kopieren dieses Ordners — `tiles/` darf man dabei weglassen, es füllt sich von selbst wieder.
+Löscht man einen Ausflug, verschwinden Bewertungen und Bilddateien mit ihm.
 
 Beim ersten Start werden zwölf **Beispiel-Lokale** rund um Brixen angelegt, damit die Auswahl
 nicht leer ist. Das sind Platzhalter mit echten Ortskoordinaten – umbenennen, korrigieren oder
@@ -150,12 +193,14 @@ löschen. Bewertungen sind keine dabei: jede Zahl in dieser App kommt von jemand
 
 ```
 src/
-  shared/      Typen und die Score-Berechnung (Server und Client rechnen identisch)
-  server/      Bun.serve, SQLite (samt Migrationen in db.ts), Auth, Geo, Upload-Handling
+  shared/      Typen, die Score-Berechnung und die Geo-Rechnung
+               (Server und Client rechnen identisch)
+  server/      Bun.serve, SQLite (samt Migrationen in db.ts), Auth, Geo,
+               Upload-Handling, osm.ts als einzige Tür nach draußen
   client/
     pages/       die drei Bereiche, ein Ausflug, die Tür
     sheets/      alles, was Formular oder Einstellung ist
-    components/  Grund, Glas, Score, Zeile, Karte, Radar, Fotos
+    components/  Grund, Glas, Score, Zeile, Karte, Radar, Landkarte, Fotos
     lib/         Router, Saison-Cache, Bewegung, Shader-Naht, Tastatur
     styles.css   das Design-System
 ```
@@ -195,6 +240,22 @@ ist, das sagt, was ein Knopf tut, ist es Sans.
 Farbe gibt es für genau zwei Dinge. **Tannengrün** (`--accent`) für Werte: Scores, Meter, den
 Zustand eines Reglers. **Kupfer** (`--copper`) ausschließlich für das Außergewöhnliche — Platz eins,
 eine Auszeichnung, ein Rekord. Nie für „aktiv". Alles andere ist warmes Grau auf Papier.
+
+### Eine Antwort ist kein Ort
+
+Beide Segment-Regler sehen gleich aus und sind es nicht, und der Unterschied hat einmal Geld
+gekostet: „Angenommen / Abgelehnt / Nicht probiert" bei der Durst-Karte war Milchglas auf
+Milchglas und praktisch unlesbar.
+
+Beim **Navigieren** ist das in Ordnung. Die gleitende Scheibe in der Schiene ist nicht das
+Einzige, was sagt, wo man ist — die ganze Seite hat sich geändert. Bei einer **Antwort** ist sie
+es doch: die drei Wörter stehen so oder so da, und eine weiße Scheibe auf weißem Glas ist keine
+Antwort, die jemand ablesen kann. Deshalb nimmt der Regler einer Antwort Tanne auf — schwach
+getönte Füllung, Haarlinie, und das gewählte Wort selbst in Tanne. Das ist der Zustand eines
+Bedienelements, also genau das, wofür die eine Akzentfarbe da ist.
+
+Was dabei *nicht* passiert: fetter werden. Ein fetteres Wort ist ein breiteres Wort, und die
+Scheibe müsste ihm hinterherlaufen.
 
 ### Die Scheibe
 
@@ -305,56 +366,116 @@ Fokus hinein, Fokus gefangen, Fokus zurück an die Stelle, von der er kam, Escap
 darunter scrollt nicht und verrutscht auch nicht dabei. Das steht **einmal** in `lib/a11y.ts`, damit
 eine Korrektur beide erreicht.
 
-## Ausblick: Karte statt Koordinaten, und wie wer hingefahren ist
+## Die Karte, und die eine Anfrage nach draußen
 
-**Noch nicht gebaut.** Steht hier, weil es die nächste größere Sache ist und weil
-die Entscheidungen davor bekannt sein sollten.
+Ein Lokal wurde früher über **Koordinaten** eingetragen, `lat`/`lon` von Hand. Das war eine
+Notlösung und fühlte sich auch so an — niemand hat Koordinaten im Kopf. Jetzt ist da eine
+Karte: Namen tippen und einen Treffer wählen, oder den Punkt antippen.
 
-Heute wird ein Lokal über **Koordinaten** eingetragen (`lat`/`lon` von Hand), und
-`server/geo.ts` rechnet daraus Entfernung und Fahrzeit: Luftlinie → Umwegfaktor →
-Fahrzeit, mit der Möglichkeit, echte Werte zu überschreiben. Das ist eine Notlösung
-und fühlt sich auch so an — niemand hat Koordinaten im Kopf.
+Das kostet etwas, und weil es die einzige Stelle ist, an der diese App das Haus verlässt,
+gehört es ausgeschrieben.
 
-Gewünscht ist zweierlei:
+### Der Browser fragt nicht selbst
 
-1. **Eine echte Karte**, auf der man den Ort anklickt, statt Zahlen zu tippen.
-2. **Verkehrsmittel pro Person**: Rad, Auto, zu Fuß, Bus. Entfernung und Dauer
-   ergeben sich daraus, statt für alle gleich angenommen zu werden.
+Kartenkacheln und Ortssuche kommen von OpenStreetMap. Beide gehen aber **über unseren eigenen
+Server**, der sie holt und behält (`server/osm.ts`):
+
+```
+Browser ──▶ /api/tiles/{z}/{x}/{y}   ─┬─ Treffer: data/tiles/…
+                                      └─ Fehltreffer: tile.openstreetmap.org
+Browser ──▶ /api/places/search?q=…   ───▶ nominatim.openstreetmap.org
+```
+
+Der Unterschied ist nicht kosmetisch. Ohne diesen Umweg schickt jeder Browser im Haus seine
+Adresse, seinen User-Agent und einen Referrer, der sagt, in welcher Anwendung er gerade steckt,
+an einen fremden Server — pro Kachel. Mit dem Umweg sieht OpenStreetMap **eine** Maschine in
+Brixen eine Kachel abrufen. Wer in welches Tal geschaut hat, bleibt hier. Das ist genau die
+Eigenschaft, für die das Radar gebaut wurde, so weit gehalten, wie sie sich halten lässt,
+sobald es überhaupt eine Karte gibt.
+
+Was dabei gilt:
+
+- **Beide Endpunkte brauchen eine Session.** Ein offener Kachel-Proxy ist fremde Bandbreite
+  auf eigene Rechnung.
+- **Kacheln liegen für immer in `data/tiles/`.** Eine Kachel ändert sich seltener als ein
+  Lokal umzieht; der zweite Blick auf dieselbe Gegend braucht kein Netz. `rm -rf data/tiles`
+  ist die Aktualisierung.
+- **Nominatim wird auf eine Anfrage pro Sekunde gedrosselt**, serverseitig und für alle
+  gemeinsam — ein Debounce im Browser ist eine Bitte, und es gibt zwanzig Browser. Antworten
+  werden eine Stunde behalten.
+- **`OSM_CONTACT` setzen.** Die Nutzungsbedingungen beider Dienste wollen einen User-Agent,
+  der die Anwendung benennt und einen Weg lässt, sich zu beschweren. Es läuft auch ohne, es
+  ist nur schlechter Stil gegenüber gestifteter Infrastruktur.
+- **Alles bleibt umlenkbar.** `TILE_URL` und `NOMINATIM_URL` zeigen woandershin, wenn im Haus
+  einmal ein eigener Kachelsatz oder eine eigene Nominatim-Instanz steht. Dann verlässt gar
+  nichts mehr das Gebäude, und am Client ändert sich keine Zeile.
+
+Was die Karte **nicht** tut: routen. Entfernung und Fahrzeit sind weiter Luftlinie →
+Umwegfaktor → Fahrzeit aus `shared/geo.ts`. Der einzige Unterschied ist, dass die Koordinaten
+jetzt aus einem Kartenklick kommen statt aus einem Zahlenfeld, und dass die Rechnung schon
+unter der Karte mitläuft, weil sie im geteilten Code liegt und der Client sie selbst ausführen
+kann.
+
+### Wie die Karte gezeichnet ist
+
+`components/MapPick.tsx`, von Hand und ohne Bibliothek. Eine Slippy Map ist ein Gitter von
+Bildern, positioniert über zwei Logarithmen; eine Kartenbibliothek ist zweihundert Kilobyte von
+allem anderen — Layer-Verwaltung, Popups, ein zweites Event-System, eigenes CSS mit eigener
+Meinung darüber, wie ein Bedienelement aussieht. Was gebraucht wird, sind das Gitter, das
+Ziehen und der Stift, und die nehmen Fokusring, Haarlinie und Kurve aus dem Design-System,
+das schon da ist.
+
+Zwei Entscheidungen, die eine Begründung verdienen:
+
+- **Ein Tipp setzt den Stift, ein Ziehen verschiebt die Karte.** Unterschieden wird an der
+  zurückgelegten Strecke, nicht an Taste oder Dauer: unter fünf Pixeln hat jemand gezielt.
+- **Das Rad zoomt nur mit ⌘ oder Ctrl.** Die Karte liegt in einer scrollenden Schublade, und
+  eine Karte, die das Mausrad frisst, sperrt die Seite hinter sich ein. Die +/−-Knöpfe sind
+  immer da und echte Knöpfe, also hat die Tastatur sie umsonst.
+
+Die Kartenfläche ist die einzige Oberfläche in dieser App, die jemand anders gezeichnet hat,
+und wird behandelt wie ein Foto: hinter eine Haarlinie in die Scheibe gesenkt, ein paar Prozent
+entsättigt und gewärmt, damit OSMs Blau und Rosa in dieser Palette liegen statt darüber zu
+rufen. Darauf liegen genau zwei eigene Zeichen — der Stift in Tanne, weil er der Wert ist, der
+gerade gewählt wird, und das HQ in Kupfer, weil es der Fixpunkt ist, von dem alles gemessen
+wird — verbunden durch eine gestrichelte Haarlinie. Gestrichelt, weil das eine Aussage über
+Entfernung ist und keine Route, die jemand fährt.
+
+Das **Radar** bleibt, unverändert. Es ist keine schlechte Karte, sondern eine andere Aussage:
+alle Ziele nach Richtung und Weite ab HQ auf einen Blick, ohne eine einzige Kachel.
+
+## Ausblick: wie wer hingefahren ist
+
+**Noch nicht gebaut,** und der Teil, der nach der Karte übrig ist.
+
+Gewünscht: **Verkehrsmittel pro Person** — Rad, Auto, zu Fuß, Bus. Entfernung und Dauer ergeben
+sich daraus, statt für alle gleich angenommen zu werden.
 
 ### Was das anfasst
 
 | Stelle | Änderung |
 | --- | --- |
-| `server/geo.ts` | Die Schätzung aus Luftlinie und Umwegfaktor wird durch echtes Routing ersetzt — pro Verkehrsmittel. |
-| `restaurants` (Tabelle) | Ein Ort bekommt eine Geometrie statt zweier Zahlen; `distance_km`/`travel_min` werden vom festen Wert zur Route pro Verkehrsmittel. |
+| `shared/geo.ts` | Die Schätzung aus Luftlinie und Umwegfaktor wird durch echtes Routing ersetzt — pro Verkehrsmittel. |
+| `restaurants` (Tabelle) | `distance_km`/`travel_min` werden vom festen Wert zur Route pro Verkehrsmittel. |
 | `ratings` (Tabelle) | Neu: womit *diese* Person angereist ist. |
 | `shared/scoring.ts` | Die Komponente **Anfahrt** ist heute eine Zahl pro Lokal. Mit Verkehrsmitteln pro Person wird sie eine Verteilung. |
-| `NewTripSheet` | Das Koordinatenfeld verschwindet und wird ein Kartenausschnitt. |
-| `components/Radar.tsx` | Bleibt. Das Radar ist keine schlechte Karte, sondern eine andere Aussage: Richtung und Entfernung ab HQ auf einen Blick. |
+| `server/osm.ts` | Eine zweite Art Anfrage nach draußen, oder eine eigene Routing-Maschine. |
 
 ### Was vorher zu entscheiden ist
 
-**Verlassen Daten das Haus?** Das Radar existiert genau deshalb, weil diese App
-bisher keine Anfrage nach draußen schickt — eine Liste, wo eine Firma mittagessen
-geht, ist nichts für einen fremden Server. Eine echte Karte heißt Kartenkacheln,
-und die kommen entweder von einem Anbieter (dann ist diese Eigenschaft weg), aus
-einem selbst gehosteten Satz (groß, aber machbar für eine Region) oder aus einer
-hausinternen Quelle. Das ist keine technische, sondern eine Hausentscheidung.
+**Wer routet?** Für belastbare Zeiten pro Verkehrsmittel braucht es eine Routing-Maschine
+(OSRM, Valhalla, GraphHopper — alle selbst hostbar) oder einen Dienst. Ohne die eine ist „mit
+dem Rad" nur ein anderer Multiplikator auf die Luftlinie, also genau die Schätzung, die ersetzt
+werden soll. Selbst gehostet hat hier einen zusätzlichen Reiz: es wäre die eine Anfrage nach
+draußen wieder los.
 
-**Wer routet?** Für belastbare Zeiten pro Verkehrsmittel braucht es eine
-Routing-Maschine (OSRM, Valhalla, GraphHopper — alle selbst hostbar) oder einen
-Dienst. Ohne die eine ist „mit dem Rad" nur ein anderer Multiplikator auf die
-Luftlinie, also genau die Schätzung, die ersetzt werden soll.
-
-**Wessen Anfahrt zählt für den Score?** Wenn Anna mit dem Rad kommt und Markus
-fährt, sind das zwei verschiedene Anfahrten zum selben Teller. Denkbar: der
-Median über alle Anreisen, oder das Verkehrsmittel der Mehrheit, oder die Anfahrt
-bleibt am Lokal (mit dem Auto als Bezug) und das Verkehrsmittel wird nur erfasst
-und angezeigt. Die erste Variante ist die ehrlichste und die einzige, die die
-Rangliste verändert — deshalb gehört sie ausgesprochen und nicht nebenbei
+**Wessen Anfahrt zählt für den Score?** Wenn Anna mit dem Rad kommt und Markus fährt, sind das
+zwei verschiedene Anfahrten zum selben Teller. Denkbar: der Median über alle Anreisen, oder das
+Verkehrsmittel der Mehrheit, oder die Anfahrt bleibt am Lokal (mit dem Auto als Bezug) und das
+Verkehrsmittel wird nur erfasst und angezeigt. Die erste Variante ist die ehrlichste und die
+einzige, die die Rangliste verändert — deshalb gehört sie ausgesprochen und nicht nebenbei
 entschieden.
 
-**Was passiert mit den zwölf Beispiel-Lokalen und den bestehenden Ausflügen?**
-Deren Koordinaten sind Näherungen. Eine Migration kann sie übernehmen, aber die
-gerouteten Werte werden von den heute gespeicherten abweichen — und damit die
-Anfahrts-Komponente jedes bestehenden Scores.
+**Was passiert mit den zwölf Beispiel-Lokalen und den bestehenden Ausflügen?** Deren Koordinaten
+sind Näherungen. Eine Migration kann sie übernehmen, aber die gerouteten Werte werden von den
+heute gespeicherten abweichen — und damit die Anfahrts-Komponente jedes bestehenden Scores.

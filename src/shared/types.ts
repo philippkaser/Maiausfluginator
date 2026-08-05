@@ -26,6 +26,13 @@ export interface Me {
   isAdmin: boolean;
   hue: number;
   createdAt: number;
+  /**
+   * When an admin issued the key currently in use, and who. Both null while the
+   * key is one only this member has ever seen — which is the normal case, and
+   * the reason it is worth saying when it is not.
+   */
+  keyResetAt: number | null;
+  keyResetByName: string | null;
 }
 
 export interface Member {
@@ -38,6 +45,8 @@ export interface Member {
   ratingCount: number;
   photoCount: number;
   avgGiven: number | null;
+  keyResetAt: number | null;
+  keyResetByName: string | null;
 }
 
 export interface Restaurant {
@@ -57,6 +66,24 @@ export interface Restaurant {
   travelSource: "measured" | "estimated";
   /** Compass bearing from HQ in degrees, 0 = north. Null when coordinates are unknown. */
   bearing: number | null;
+}
+
+/**
+ * A place as OpenStreetMap knows it, on its way into the "Lokal fehlt noch"
+ * form. Everything a restaurant needs except the parts only a person can say
+ * (was it worth it, when did we go).
+ */
+export interface PlaceHit {
+  id: string;
+  name: string;
+  town: string;
+  address: string | null;
+  cuisine: string | null;
+  website: string | null;
+  lat: number;
+  lon: number;
+  /** The full comma-separated description, to tell two similar hits apart. */
+  label: string;
 }
 
 export interface Rating {

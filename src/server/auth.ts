@@ -31,9 +31,21 @@ export interface UserRow {
   is_admin: number;
   hue: number;
   created_at: number;
+  key_reset_at: number | null;
+  key_reset_by: string | null;
 }
 
 export function toMe(user: UserRow): Me {
+  // Resolved to a name rather than an id, because the point of carrying this to
+  // the client is for the member to read "Philipp hat dir einen Schlüssel
+  // ausgestellt" in their own account and know whether that was expected.
+  const resetBy =
+    user.key_reset_by === null
+      ? null
+      : (db
+          .query<{ display_name: string }, [string]>("SELECT display_name FROM users WHERE id = ?")
+          .get(user.key_reset_by)?.display_name ?? null);
+
   return {
     id: user.id,
     handle: user.handle,
@@ -41,6 +53,8 @@ export function toMe(user: UserRow): Me {
     isAdmin: user.is_admin === 1,
     hue: user.hue,
     createdAt: user.created_at,
+    keyResetAt: user.key_reset_at ?? null,
+    keyResetByName: resetBy,
   };
 }
 
@@ -207,6 +221,9 @@ export async function redeemInvite(rawCode: string, displayName: string): Promis
     is_admin: invite.grants_admin,
     hue: hueFor(displayName + Math.random()),
     created_at: now(),
+    // Their first key is one only they have seen.
+    key_reset_at: null,
+    key_reset_by: null,
   };
 
   db.transaction(() => {
@@ -250,12 +267,53 @@ export async function login(handleOrName: string, key: string): Promise<UserRow>
   return user;
 }
 
-export async function rotateKey(userId: string): Promise<string> {
+/**
+ * Mint a new key for a member. The old one stops working immediately and so do
+ * their sessions — a key that has gone missing may have gone missing into
+ * somebody else's pocket, and the caller cannot know.
+ *
+ * `by` is the admin who did it on someone else's behalf. Rotating your own key
+ * clears that mark: from then on the only person who has ever seen this key is
+ * you.
+ */
+export async function rotateKey(userId: string, by: string | null = null): Promise<string> {
   const personalKey = randomCode(4, 4);
   const keyHash = await Bun.password.hash(normalizeCode(personalKey), "argon2id");
-  db.query("UPDATE users SET key_hash = ? WHERE id = ?").run(keyHash, userId);
+  db.query("UPDATE users SET key_hash = ?, key_reset_at = ?, key_reset_by = ? WHERE id = ?").run(
+    keyHash,
+    by === null ? null : now(),
+    by,
+    userId,
+  );
   db.query("DELETE FROM sessions WHERE user_id = ?").run(userId);
   return personalKey;
+}
+
+/**
+ * There is nothing to send a reset link to, so a mislaid key is recovered the
+ * only way it can be: an admin issues a new one and reads it out. Which makes
+ * this the one call in the app that can hand over somebody else's account, so it
+ * refuses the two shapes that are mistakes rather than help.
+ */
+export async function resetKeyForMember(
+  targetId: string,
+  admin: UserRow,
+): Promise<{ personalKey: string; user: UserRow }> {
+  if (targetId === admin.id) {
+    // Doing it here would drop the admin's own session without setting a new
+    // cookie — they would be signed out mid-sheet. Their own account has the
+    // button that does this properly.
+    throw new HttpError(400, "Deinen eigenen Schlüssel erneuerst du in deinem Konto.");
+  }
+
+  const target = db.query<UserRow, [string]>("SELECT * FROM users WHERE id = ?").get(targetId);
+  if (!target) throw new HttpError(404, "Dieses Mitglied gibt es nicht.");
+
+  const personalKey = await rotateKey(target.id, admin.id);
+  console.log(
+    `  Schlüssel für ${target.display_name} (${target.handle}) neu ausgestellt von ${admin.display_name}.`,
+  );
+  return { personalKey, user: target };
 }
 
 /* ------------------------------------------------------------------ */

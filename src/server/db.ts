@@ -23,7 +23,13 @@ CREATE TABLE IF NOT EXISTS users (
   key_hash      TEXT NOT NULL,
   is_admin      INTEGER NOT NULL DEFAULT 0,
   hue           INTEGER NOT NULL DEFAULT 200,
-  created_at    INTEGER NOT NULL
+  created_at    INTEGER NOT NULL,
+  -- Set when somebody *else* issued the current key: an admin helping out
+  -- whoever mislaid theirs. Cleared the moment the member rotates it
+  -- themselves. Not an audit log, one fact: the key you are using right now
+  -- passed through another pair of hands, and you can see whose.
+  key_reset_at  INTEGER,
+  key_reset_by  TEXT REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS invites (
@@ -137,6 +143,12 @@ function addColumn(table: string, column: string, definition: string): void {
 
 // Whether the Durst card was accepted. Ten euros off a bill is worth recording.
 addColumn("ratings", "card_accepted", "INTEGER");
+
+// Who issued the key somebody is signing in with, when it was not themselves.
+// SQLite allows a REFERENCES clause on an added column as long as it defaults to
+// NULL, which is exactly the case here.
+addColumn("users", "key_reset_at", "INTEGER");
+addColumn("users", "key_reset_by", "TEXT REFERENCES users(id) ON DELETE SET NULL");
 
 
 export function now(): number {

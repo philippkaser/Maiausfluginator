@@ -126,6 +126,9 @@
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 
   color-scheme: light;
+  /* The one place a browser picks a colour for us — a checkbox, a native
+     control. Pine, so it does not arrive as system blue. */
+  accent-color: var(--accent);
 }
 
 /* Dark seam — deliberately empty.
@@ -835,6 +838,41 @@ a.link:hover {
   opacity: 0;
 }
 
+/**
+ * A choice, as opposed to a place.
+ *
+ * Navigating is white glass sliding along white glass, and that is fine, because
+ * the label under the thumb is not the only thing saying where you are — the
+ * whole page changed. An *answer* has nothing else saying it: "Angenommen" and
+ * "Abgelehnt" are the same three words either way, and a pane of white glass on
+ * a pane of white glass is not an answer anyone can read. So the thumb of a
+ * choice picks up pine — it is the state of a control, which is exactly what
+ * pine is for.
+ *
+ * The tint is deliberately weak and the hairline carries the edge. The word
+ * turning pine does most of the work; the weight stays put, because a bolder
+ * label would be a wider label and the thumb would have to chase it.
+ */
+.segmented--choice .segmented__thumb {
+  background: var(--accent-soft-hi);
+  box-shadow:
+    inset 0 0 0 1px var(--accent-line),
+    0 1px 3px rgba(28, 92, 71, 0.1);
+}
+
+.segmented--choice .segmented__item--on {
+  color: var(--accent);
+}
+
+/* Hovering an option you have not picked must not look like having picked it. */
+.segmented--choice .segmented__item:hover {
+  color: var(--ink);
+}
+
+.segmented--choice .segmented__item--on:hover {
+  color: var(--accent);
+}
+
 .segmented__item {
   position: relative;
   z-index: 1;
@@ -1084,6 +1122,20 @@ a.link:hover {
   background: var(--danger-soft);
   padding: 10px 14px;
   border-radius: var(--r-sm);
+}
+
+/**
+ * Something true that is nobody's fault — not an error, not decoration. The one
+ * in use says an admin issued the key you are signing in with. It borrows the
+ * quote's left rule rather than a tinted box, because it is a remark, not an
+ * alarm.
+ */
+.notice {
+  color: var(--ink-2);
+  padding: 2px 0 2px 14px;
+  border-left: 2px solid var(--accent-line);
+  margin: 0;
+  text-wrap: pretty;
 }
 
 /* Range inputs. The track fills to the thumb via --fill so there is no second
@@ -2222,6 +2274,294 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .radar__point:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Die Karte
+
+   A borrowed surface, and the only one in this app that is somebody else's
+   drawing. So it is treated as a photograph is treated: sunk into the pane
+   behind a hairline, desaturated a few percent and warmed, so OSM's blues and
+   pinks sit inside this palette instead of shouting across it. The two things
+   drawn *on* it — the door and the pin — are ours, and they use the two colours
+   the design system has: pine for the value being picked, copper for the fixed
+   point everything is measured from.
+   -------------------------------------------------------------------------- */
+
+.mappick {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mappick__surface {
+  position: relative;
+  height: 320px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--ground-deep);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  /* A drag is a pan, not a scroll of the sheet behind it. */
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.mappick__surface:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .mappick__surface {
+    height: 260px;
+  }
+}
+
+.mappick__tiles {
+  position: absolute;
+  inset: 0;
+  /* Warmed and calmed to sit in the palette. Cartography is loud by trade —
+     it has to work standalone — and this one is a background to a decision. */
+  filter: saturate(0.72) contrast(0.96) sepia(0.07);
+}
+
+.mappick__tile {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  opacity: 0;
+  transition: opacity var(--t-quick) var(--ease);
+}
+
+.mappick__tile.is-loaded {
+  opacity: 1;
+}
+
+/* The hairline home. Dashed, because it is a statement about distance and not a
+   route anybody drives. */
+.mappick__link {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.mappick__link line {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 5;
+  opacity: 0.75;
+}
+
+.mappick__hq,
+.mappick__pin {
+  position: absolute;
+  pointer-events: none;
+}
+
+.mappick__hq {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transform: translate(-5px, -5px);
+}
+
+.mappick__hq-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--copper);
+  box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.92);
+  flex: none;
+}
+
+.mappick__hq-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--copper);
+  background: rgba(255, 255, 255, 0.86);
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+/**
+ * The pin is a ring, not a teardrop. A teardrop points at a pixel with a shape
+ * whose own tip is ambiguous; a ring is centred on exactly the coordinate it
+ * means, which matters when the thing being chosen is a coordinate.
+ */
+.mappick__pin {
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  border: 2.5px solid var(--accent);
+  background: var(--accent-soft);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 2px 8px rgba(28, 92, 71, 0.25);
+}
+
+.mappick__pin::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Waiting on the address for this spot. */
+.mappick__pin.is-busy {
+  animation: pin-wait 1.4s var(--ease) infinite;
+}
+
+@keyframes pin-wait {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.mappick__zoom {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mappick__btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  appearance: none;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: var(--glass-solid);
+  box-shadow:
+    inset 0 0 0 1px var(--hairline-strong),
+    var(--shadow-sm);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mappick__btn:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.mappick__btn:disabled {
+  color: var(--ink-4);
+  cursor: default;
+}
+
+.mappick__credit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  font-size: 0.66rem;
+  color: var(--ink-3);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 3px 8px;
+  border-top-left-radius: var(--r-xs);
+  text-decoration: none;
+}
+
+.mappick__credit:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.mappick__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mappick__read {
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+
+.mappick__help {
+  font-size: 0.8rem;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+/* --------------------------------------------------------------------------
+   Ortssuche — the search that fills the form in
+
+   A listbox under a field. Kept deliberately plain: the interesting part is
+   that picking a row writes name, town, address and coordinates at once, and
+   that is felt in the form below, not in this dropdown.
+   -------------------------------------------------------------------------- */
+
+.findplace {
+  position: relative;
+}
+
+.findplace__hits {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: 264px;
+  overflow-y: auto;
+  border-radius: var(--r-sm);
+  background: var(--glass-solid);
+  backdrop-filter: var(--frost);
+  -webkit-backdrop-filter: var(--frost);
+  box-shadow:
+    inset 0 0 0 1px var(--hairline-strong),
+    var(--shadow-md);
+}
+
+.findplace__hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  padding: 9px 11px;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.findplace__hit:hover,
+.findplace__hit[aria-selected="true"] {
+  background: var(--accent-soft);
+}
+
+.findplace__hit-name {
+  display: block;
+  font-weight: 500;
+}
+
+.findplace__hit-where {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--ink-3);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* --------------------------------------------------------------------------

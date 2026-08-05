@@ -9,10 +9,23 @@
  * when. The second step also holds the escape hatch for a place that is not in
  * the list yet, since adding a restaurant is much rarer than adding an outing to
  * one that already exists.
+ *
+ * That escape hatch used to ask for latitude and longitude. Nobody has those in
+ * their head, so it was the one part of this app that felt like filling in a
+ * form for a computer rather than telling it something. It is a map now: search
+ * the name, or tap the spot, and the numbers derive themselves — distance and
+ * drive from the HQ update under the pin as it moves, computed by the same code
+ * the server will use when it saves (`shared/geo.ts`).
+ *
+ * The coordinates did not go away, they went under a disclosure. They are the
+ * path that does not depend on being able to see a map, and they are how you
+ * enter a hut the survey has never heard of.
  */
 
 import { useEffect, useMemo, useState } from "react";
 
+import { FindPlace } from "../components/FindPlace.tsx";
+import { MapPick } from "../components/MapPick.tsx";
 import { Sheet } from "../components/Sheet.tsx";
 import { Field, Spinner, Tag } from "../components/ui.tsx";
 import { api, ApiError } from "../lib/api.ts";
@@ -20,7 +33,7 @@ import { useSeason } from "../lib/data.tsx";
 import { formatDecimal, formatMinutes, todayIso } from "../lib/format.ts";
 import { useRouter } from "../lib/router.tsx";
 import { useSession, useToast } from "../lib/store.tsx";
-import type { Restaurant } from "../../shared/types.ts";
+import type { PlaceHit, Restaurant } from "../../shared/types.ts";
 
 const EMPTY_PLACE = {
   name: "",
@@ -44,6 +57,8 @@ export function NewTripSheet({ onClose }: { onClose: () => void }) {
   const [restaurantId, setRestaurantId] = useState("");
   const [newPlace, setNewPlace] = useState(false);
   const [place, setPlace] = useState({ ...EMPTY_PLACE });
+  const [manual, setManual] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   const [title, setTitle] = useState("");
   const [tripDate, setTripDate] = useState(todayIso);
@@ -70,6 +85,69 @@ export function NewTripSheet({ onClose }: { onClose: () => void }) {
     [restaurants, restaurantId],
   );
 
+  /**
+   * The pin, derived from the two text fields rather than held beside them.
+   * One source of truth means typing a coordinate moves the pin and moving the
+   * pin rewrites the coordinate, with nothing to keep in sync.
+   */
+  const spot = useMemo(() => {
+    if (place.lat === "" || place.lon === "") return null;
+    const lat = Number(place.lat);
+    const lon = Number(place.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+    return { lat, lon };
+  }, [place.lat, place.lon]);
+
+  /** A search hit is the whole answer: everything the form wants, at once. */
+  function takeHit(hit: PlaceHit) {
+    setPlace((current) => ({
+      ...current,
+      name: hit.name,
+      town: hit.town || current.town,
+      address: hit.address ?? current.address,
+      cuisine: hit.cuisine ?? current.cuisine,
+      website: hit.website ?? current.website,
+      lat: hit.lat.toFixed(6),
+      lon: hit.lon.toFixed(6),
+      // Any distance typed for a previous spot is now about the wrong place.
+      distanceKm: "",
+      travelMin: "",
+    }));
+  }
+
+  /**
+   * A tap on the map. Town and street describe the *point*, so they follow it;
+   * name, kitchen and website describe the restaurant, so they are left exactly
+   * as typed. Nudging the pin two doors down must not wipe the name.
+   */
+  async function pickSpot(next: { lat: number; lon: number }) {
+    setPlace((current) => ({
+      ...current,
+      lat: next.lat.toFixed(6),
+      lon: next.lon.toFixed(6),
+      distanceKm: "",
+      travelMin: "",
+    }));
+
+    setLocating(true);
+    try {
+      const result = await api.placeAt(next.lat, next.lon);
+      if (result.place) {
+        setPlace((current) => ({
+          ...current,
+          town: result.place!.town || current.town,
+          address: result.place!.address ?? current.address,
+        }));
+      }
+    } catch {
+      // No address for this point is not a problem worth a toast: the pin is
+      // set, the distance is computed, and the town can be typed.
+    } finally {
+      setLocating(false);
+    }
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -85,8 +163,8 @@ export function NewTripSheet({ onClose }: { onClose: () => void }) {
           address: place.address || null,
           cuisine: place.cuisine || null,
           website: place.website || null,
-          lat: place.lat === "" ? null : Number(place.lat),
-          lon: place.lon === "" ? null : Number(place.lon),
+          lat: spot?.lat ?? null,
+          lon: spot?.lon ?? null,
           distanceKm: place.distanceKm === "" ? null : Number(place.distanceKm),
           travelMin: place.travelMin === "" ? null : Number(place.travelMin),
         });
@@ -147,6 +225,12 @@ export function NewTripSheet({ onClose }: { onClose: () => void }) {
 
           {newPlace ? (
             <div className="stack">
+              <FindPlace onChoose={takeHit} autoFocus />
+
+              <MapPick hq={hq} value={spot} onPick={pickSpot} busy={locating} />
+
+              <hr className="divider" />
+
               <Field label="Name des Lokals">
                 <input
                   className="input"
@@ -154,7 +238,6 @@ export function NewTripSheet({ onClose }: { onClose: () => void }) {
                   onChange={(event) => setPlace({ ...place, name: event.target.value })}
                   required
                   maxLength={120}
-                  autoFocus
                 />
               </Field>
 
@@ -198,49 +281,65 @@ export function NewTripSheet({ onClose }: { onClose: () => void }) {
                 />
               </Field>
 
-              <hr className="divider" />
+              {/* The numbers, for the two cases the map cannot serve: a place no
+                  survey knows, and somebody who has driven this route and knows
+                  what it actually takes. */}
+              <div className="stack" style={{ gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn--quiet btn--sm"
+                  onClick={() => setManual((value) => !value)}
+                  aria-expanded={manual}
+                >
+                  {manual ? "Zahlen ausblenden" : "Koordinaten und Fahrzeit von Hand"}
+                </button>
 
-              <p className="small dim">
-                Koordinaten genügen — daraus werden Entfernung und Fahrzeit geschätzt. Wer die echten
-                Werte kennt, trägt sie ein; die gewinnen immer.
-              </p>
+                {manual && (
+                  <div className="stack">
+                    <p className="small dim" style={{ margin: 0 }}>
+                      Aus den Koordinaten werden Entfernung und Fahrzeit geschätzt. Wer die echten
+                      Werte kennt, trägt sie ein; die gewinnen immer.
+                    </p>
 
-              <div className="pair">
-                <Field label="Breitengrad" hint="z. B. 46.7150">
-                  <input
-                    className="input"
-                    value={place.lat}
-                    onChange={(event) => setPlace({ ...place, lat: event.target.value })}
-                    inputMode="decimal"
-                  />
-                </Field>
-                <Field label="Längengrad" hint="z. B. 11.6570">
-                  <input
-                    className="input"
-                    value={place.lon}
-                    onChange={(event) => setPlace({ ...place, lon: event.target.value })}
-                    inputMode="decimal"
-                  />
-                </Field>
-              </div>
+                    <div className="pair">
+                      <Field label="Breitengrad" hint="z. B. 46.7150">
+                        <input
+                          className="input"
+                          value={place.lat}
+                          onChange={(event) => setPlace({ ...place, lat: event.target.value })}
+                          inputMode="decimal"
+                        />
+                      </Field>
+                      <Field label="Längengrad" hint="z. B. 11.6570">
+                        <input
+                          className="input"
+                          value={place.lon}
+                          onChange={(event) => setPlace({ ...place, lon: event.target.value })}
+                          inputMode="decimal"
+                        />
+                      </Field>
+                    </div>
 
-              <div className="pair">
-                <Field label="Entfernung" hint="Kilometer, einfache Strecke">
-                  <input
-                    className="input"
-                    value={place.distanceKm}
-                    onChange={(event) => setPlace({ ...place, distanceKm: event.target.value })}
-                    inputMode="decimal"
-                  />
-                </Field>
-                <Field label="Fahrzeit" hint="Minuten ab HQ">
-                  <input
-                    className="input"
-                    value={place.travelMin}
-                    onChange={(event) => setPlace({ ...place, travelMin: event.target.value })}
-                    inputMode="numeric"
-                  />
-                </Field>
+                    <div className="pair">
+                      <Field label="Entfernung" hint="Kilometer, einfache Strecke">
+                        <input
+                          className="input"
+                          value={place.distanceKm}
+                          onChange={(event) => setPlace({ ...place, distanceKm: event.target.value })}
+                          inputMode="decimal"
+                        />
+                      </Field>
+                      <Field label="Fahrzeit" hint="Minuten ab HQ">
+                        <input
+                          className="input"
+                          value={place.travelMin}
+                          onChange={(event) => setPlace({ ...place, travelMin: event.target.value })}
+                          inputMode="numeric"
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : restaurants === null ? (

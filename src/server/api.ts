@@ -19,11 +19,13 @@ import {
   redeemInvite,
   requireAdmin,
   requireUser,
+  resetKeyForMember,
   rotateKey,
   sessionCookieHeader,
   toMe,
 } from "./auth.ts";
 import { sniffImage } from "./imagemeta.ts";
+import { describePoint, ensureTile, parseTileCoords, searchPlaces } from "./osm.ts";
 import * as repo from "./repo.ts";
 import { buildStats } from "./stats.ts";
 import {
@@ -400,6 +402,19 @@ const communityRoutes = {
     }),
   },
 
+  /**
+   * The way back in for somebody who lost their key. Only a hash of it is
+   * stored, so nobody — admin included — can look the old one up; the only thing
+   * that can be done is to issue a new one, which is what this does.
+   */
+  "/api/members/:id/key": {
+    POST: route(async (req) => {
+      const admin = requireAdmin(req);
+      const result = await resetKeyForMember(param(req, "id"), admin);
+      return json({ personalKey: result.personalKey, members: repo.listMembers() });
+    }),
+  },
+
   "/api/stats": {
     GET: route((req) => {
       const user = requireUser(req);
@@ -433,9 +448,73 @@ const communityRoutes = {
   },
 };
 
+/* ------------------------------------------------------------------ */
+/* The map                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Tiles and place search, both proxied. See the long note at the top of
+ * `osm.ts` for why the browser is not allowed to fetch either of these itself.
+ *
+ * Every one of these requires a session — an open tile proxy is somebody else's
+ * bandwidth bill.
+ */
+const mapRoutes = {
+  "/api/tiles/:z/:x/:y": {
+    GET: route(async (req) => {
+      requireUser(req);
+      const coords = parseTileCoords(param(req, "z"), param(req, "x"), param(req, "y"));
+
+      let path;
+      try {
+        path = await ensureTile(coords);
+      } catch (err) {
+        // A missing tile is a hole in the map, not a broken page: the picker
+        // still pans and the pin still drops. No caching of the failure, so the
+        // next pan retries.
+        if (err instanceof HttpError) {
+          return new Response(null, { status: 502, headers: { "Cache-Control": "no-store" } });
+        }
+        throw err;
+      }
+
+      return new Response(Bun.file(path), {
+        headers: {
+          "Content-Type": "image/png",
+          // Ours now, on disk, and a tile for a given z/x/y is always the same
+          // place. The browser may keep it as long as it likes.
+          "Cache-Control": "private, max-age=31536000, immutable",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }),
+  },
+
+  "/api/places/search": {
+    GET: route(async (req) => {
+      requireUser(req);
+      const query = new URL(req.url).searchParams.get("q") ?? "";
+      return json({ places: await searchPlaces(query.slice(0, 160)) });
+    }),
+  },
+
+  "/api/places/at": {
+    GET: route(async (req) => {
+      requireUser(req);
+      const params = new URL(req.url).searchParams;
+      const lat = Number(params.get("lat"));
+      const lon = Number(params.get("lon"));
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90) throw new HttpError(400, "Breitengrad fehlt");
+      if (!Number.isFinite(lon) || lon < -180 || lon > 180) throw new HttpError(400, "Längengrad fehlt");
+      return json({ place: await describePoint(lat, lon) });
+    }),
+  },
+};
+
 export const apiRoutes = {
   "/api/health": new Response("ok"),
   ...sessionRoutes,
+  ...mapRoutes,
   ...restaurantRoutes,
   ...tripRoutes,
   ...ratingRoutes,

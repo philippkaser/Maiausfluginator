@@ -174,8 +174,18 @@ function useSegmentThumb<T extends HTMLElement>(dependency: unknown) {
   return { list, measured, place };
 }
 
-function trackClasses(bare: boolean, block: boolean, measured: boolean): string {
-  return ["segmented", bare && "segmented--bare", block && "segmented--block", !measured && "segmented--unmeasured"]
+/**
+ * `choice` separates the two flavours where it matters: picking an answer gets a
+ * pine thumb, going somewhere keeps plain glass. See the note in styles.css.
+ */
+function trackClasses(bare: boolean, block: boolean, measured: boolean, choice: boolean): string {
+  return [
+    "segmented",
+    choice && "segmented--choice",
+    bare && "segmented--bare",
+    block && "segmented--block",
+    !measured && "segmented--unmeasured",
+  ]
     .filter(Boolean)
     .join(" ");
 }
@@ -207,7 +217,7 @@ export function Segmented<T extends string>({
   const { list, measured } = useSegmentThumb<HTMLDivElement>(value);
 
   return (
-    <div className={trackClasses(bare, block, measured)} role="group" aria-label={label} ref={list}>
+    <div className={trackClasses(bare, block, measured, true)} role="group" aria-label={label} ref={list}>
       <span className="segmented__thumb" aria-hidden="true" />
       {options.map((option) => {
         const on = option.value === value;
@@ -255,7 +265,7 @@ export function SegmentedNav({
     // Its own <nav> landmark, so the label belongs to the group rather than
     // being pasted onto every link — an aria-label on the link would replace the
     // visible word, which is exactly what a voice-control user reads out.
-    <nav className={trackClasses(bare, block, measured)} aria-label={label} ref={list}>
+    <nav className={trackClasses(bare, block, measured, false)} aria-label={label} ref={list}>
       <span className="segmented__thumb" aria-hidden="true" />
       {options.map((option) => {
         const on = option.value === current;

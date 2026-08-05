@@ -205,8 +205,14 @@ export function Gate() {
                 </button>
               </form>
 
+              {/* Two different dead ends, and the way out of each is a different
+                  person's doing — so both are spelled out. Nobody can look a key
+                  up (only a hash of it is stored), which is why the answer to a
+                  lost one is a new one and not a reminder. */}
               <p className="small dim">
-                Kein Zugang? Frag jemanden aus der Runde nach einem Einladungscode.
+                {mode === "redeem"
+                  ? "Kein Code? Frag jemanden aus der Runde — jeder Code gilt genau einmal."
+                  : "Schlüssel verloren? Nachsehen kann ihn niemand. Ein Admin aus der Runde stellt dir in der Verwaltung einen neuen aus, der alte verfällt dabei."}
               </p>
             </div>
           )}

@@ -559,15 +559,19 @@ export function listMembers(): Member[] {
         rating_count: number;
         photo_count: number;
         avg_given: number | null;
+        key_reset_at: number | null;
+        key_reset_by_name: string | null;
       },
       []
     >(
       `SELECT u.id, u.handle, u.display_name, u.is_admin, u.hue, u.created_at,
+              u.key_reset_at, admin.display_name AS key_reset_by_name,
               (SELECT COUNT(*) FROM ratings r WHERE r.user_id = u.id) AS rating_count,
               (SELECT COUNT(*) FROM photos p WHERE p.user_id = u.id) AS photo_count,
               (SELECT AVG((r.essen + r.service + r.ambiente + r.preis + r.erlebnis) / 5.0)
                  FROM ratings r WHERE r.user_id = u.id) AS avg_given
          FROM users u
+         LEFT JOIN users admin ON admin.id = u.key_reset_by
         ORDER BY rating_count DESC, u.created_at ASC`,
     )
     .all()
@@ -581,6 +585,8 @@ export function listMembers(): Member[] {
       ratingCount: row.rating_count,
       photoCount: row.photo_count,
       avgGiven: row.avg_given,
+      keyResetAt: row.key_reset_at,
+      keyResetByName: row.key_reset_by_name,
     }));
 }
 

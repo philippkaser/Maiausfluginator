@@ -3,6 +3,7 @@ import type {
   Me,
   Member,
   Photo,
+  PlaceHit,
   Rating,
   Restaurant,
   Stats,
@@ -32,7 +33,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ...init?.headers,
       },
     });
-  } catch {
+  } catch (err) {
+    // An abort is not a failure — the caller moved on, which is what a search
+    // box does on every keystroke. Passing it through unchanged keeps a stale
+    // request from surfacing as "no connection".
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new ApiError(0, "Keine Verbindung zum Server.");
   }
 
@@ -108,6 +113,21 @@ export const api = {
 
   restaurants: () => request<{ restaurants: Restaurant[] }>("/api/restaurants"),
 
+  /**
+   * Place lookup, through our own server. Both of these are proxies onto
+   * OpenStreetMap — see `server/osm.ts` for why the browser is not the one
+   * asking. `signal` matters here: typing produces a search per keystroke-burst
+   * and only the last answer is wanted.
+   */
+  searchPlaces: (query: string, signal?: AbortSignal) =>
+    request<{ places: PlaceHit[] }>(`/api/places/search?q=${encodeURIComponent(query)}`, { signal }),
+
+  placeAt: (lat: number, lon: number, signal?: AbortSignal) =>
+    request<{ place: PlaceHit | null }>(
+      `/api/places/at?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}`,
+      { signal },
+    ),
+
   createRestaurant: (input: Record<string, unknown>) =>
     request<{ restaurant: Restaurant }>("/api/restaurants", { method: "POST", body: body(input) }),
 
@@ -125,6 +145,18 @@ export const api = {
     request<{ likes: number; likedByMe: boolean }>(`/api/photos/${photoId}/like`, { method: "POST" }),
 
   members: () => request<{ members: Member[] }>("/api/members"),
+
+  /**
+   * Admin only. Nobody can read an existing key — only a hash of it is stored —
+   * so helping someone who lost theirs means minting a new one. The response is
+   * the only time it is readable, hence the fresh member list alongside it: the
+   * caller has one round trip in which to show it and record that it happened.
+   */
+  resetMemberKey: (memberId: string) =>
+    request<{ personalKey: string; members: Member[] }>(`/api/members/${memberId}/key`, {
+      method: "POST",
+    }),
+
   stats: () => request<{ stats: Stats }>("/api/stats"),
 
   invites: () => request<{ invites: Invite[] }>("/api/invites"),

@@ -16,6 +16,7 @@ import { Sheet } from "./components/Sheet.tsx";
 import { Avatar, Mark, SegmentedNav, Spinner } from "./components/ui.tsx";
 import { api } from "./lib/api.ts";
 import { SeasonProvider } from "./lib/data.tsx";
+import { formatRelative } from "./lib/format.ts";
 import { useScrollProgress } from "./lib/motion.ts";
 import { Link, useRouter } from "./lib/router.tsx";
 import { useSession, useToast } from "./lib/store.tsx";
@@ -105,6 +106,7 @@ function Rail({ onOpen }: { onOpen: (sheet: OpenSheet) => void }) {
 /** Your own key. Shown once, and only if you ask for a new one. */
 function KeyRenewal() {
   const toast = useToast();
+  const { me, setMe } = useSession();
   const [key, setKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -117,6 +119,17 @@ function KeyRenewal() {
           macht den alten sofort ungültig.
         </p>
       </div>
+
+      {/* An admin can issue a key for someone who lost theirs — which means for a
+          moment two people knew it. Saying so is the price of that power being
+          useful: the member can see it happened, and undo the sharing with one
+          click below. */}
+      {me?.keyResetByName && me.keyResetAt !== null && (
+        <p className="small notice">
+          Dein aktueller Schlüssel wurde {formatRelative(me.keyResetAt)} von {me.keyResetByName} für
+          dich ausgestellt. Erneuere ihn hier, dann kennt ihn wieder nur du.
+        </p>
+      )}
 
       {key ? (
         <div className="keycard">
@@ -136,6 +149,9 @@ function KeyRenewal() {
             try {
               const result = await api.rotateKey();
               setKey(result.personalKey);
+              // This key has been seen by nobody else, so the notice above is no
+              // longer true.
+              if (me) setMe({ ...me, keyResetAt: null, keyResetByName: null });
             } catch {
               toast("Das hat nicht geklappt. Dein alter Schlüssel gilt weiter.", "error");
             } finally {
@@ -177,8 +193,11 @@ function AccountSheet({ onClose, onAdmin }: { onClose: () => void; onAdmin: () =
             <hr className="divider" />
             <div className="stack">
               <div>
-                <strong>Einladungen</strong>
-                <p className="small dim">Codes ausgeben und zurückziehen.</p>
+                <strong>Verwaltung</strong>
+                <p className="small dim">
+                  Einladungscodes ausgeben und zurückziehen — und für wen den Schlüssel verlegt hat,
+                  einen neuen ausstellen.
+                </p>
               </div>
               <button type="button" className="btn" onClick={onAdmin}>
                 Verwaltung öffnen
